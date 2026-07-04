@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ตารางหยุดงานร้านเรา</title>
+
+<!-- PWA / มือถือ -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4f6cf7">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ตารางหยุด">
+
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --line: #e3e8f0;
+    --text: #1f2a44;
+    --muted: #7a869a;
+    --primary: #4f6cf7;
+    --primary-soft: #eaefff;
+    --full: #ff5a76;
+    --full-soft: #ffe6ea;
+    --ok: #2bbf7a;
+    --warnbg: #fff4e0;
+    --warntx: #b8770a;
+    --shadow: 0 10px 30px rgba(31,42,68,.08);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Sarabun", "Noto Sans Thai", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 14px 60px; }
+  header h1 { font-size: 1.45rem; margin: 0 0 4px; }
+  header p { margin: 0 0 16px; color: var(--muted); font-size: .92rem; }
+
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 10px 12px; box-shadow: var(--shadow);
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .month-title { font-size: 1.15rem; font-weight: 700; flex: 1; text-align: center; }
+  .nav { display: flex; gap: 6px; }
+  button {
+    font-family: inherit; cursor: pointer; border: none;
+    border-radius: 10px; padding: 9px 13px; font-size: .92rem; font-weight: 600;
+    transition: .15s; background: var(--primary-soft); color: var(--primary);
+  }
+  button:hover { filter: brightness(.97); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: #f0f2f7; color: var(--text); }
+  button.primary { background: var(--primary); color: #fff; }
+  button.danger { background: var(--full-soft); color: var(--full); }
+  button.icon { padding: 9px 11px; }
+
+  /* แถบสถานะการเชื่อมต่อ */
+  .status {
+    display: flex; align-items: center; gap: 8px; font-size: .82rem;
+    padding: 8px 12px; border-radius: 12px; margin-bottom: 12px; font-weight: 600;
+  }
+  .status .sdot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .status.online  { background: #e7f8f0; color: #17805a; }
+  .status.online  .sdot { background: var(--ok); }
+  .status.offline { background: var(--full-soft); color: var(--full); }
+  .status.offline .sdot { background: var(--full); }
+  .status.local   { background: var(--warnbg); color: var(--warntx); }
+  .status.local   .sdot { background: var(--warntx); }
+  .status.syncing { background: var(--primary-soft); color: var(--primary); }
+  .status.syncing .sdot { background: var(--primary); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .status .grow { flex: 1; }
+  .status button { padding: 5px 10px; font-size: .78rem; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; color: var(--muted); font-size: .82rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  .calendar {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .weekdays, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .weekdays div {
+    text-align: center; padding: 11px 2px; font-weight: 700; font-size: .8rem;
+    color: var(--muted); background: #fafbfe; border-bottom: 1px solid var(--line);
+  }
+  .day {
+    min-height: 92px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 7px; position: relative; cursor: pointer; transition: background .12s;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .day:nth-child(7n) { border-right: none; }
+  .day.empty { background: #fbfcfe; cursor: default; }
+  .day:not(.empty):active { background: #eef2ff; }
+  .day .num { font-weight: 700; font-size: .92rem; }
+  .day.today .num {
+    background: var(--primary); color: #fff; width: 25px; height: 25px;
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .day.full { background: var(--full-soft); }
+  .names { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+  .chip {
+    font-size: .7rem; background: var(--primary-soft); color: var(--primary);
+    padding: 2px 7px; border-radius: 20px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 100%;
+  }
+  .count-badge {
+    position: absolute; top: 7px; right: 7px; font-size: .68rem; font-weight: 700;
+    background: var(--ok); color: #fff; border-radius: 20px; padding: 1px 6px;
+  }
+  .count-badge.full { background: var(--full); }
+
+  /* Modal */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(31,42,68,.45);
+    display: none; align-items: flex-end; justify-content: center; padding: 0; z-index: 50;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 40px rgba(0,0,0,.2); animation: slideup .22s ease;
+  }
+  @keyframes slideup { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  @media (min-width:520px){
+    .overlay{ align-items:center; padding:16px; }
+    .modal{ border-radius:18px; animation:none; }
+  }
+  .modal h2 { margin: 0 0 4px; font-size: 1.2rem; }
+  .modal .sub { color: var(--muted); margin: 0 0 14px; font-size: .9rem; }
+  .field { display: flex; gap: 8px; margin-bottom: 14px; }
+  .field input {
+    flex: 1; font-family: inherit; font-size: 1rem; padding: 12px; min-width: 0;
+    border: 1px solid var(--line); border-radius: 10px; outline: none;
+  }
+  .field input:focus { border-color: var(--primary); }
+  .list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .list-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #f7f9ff; border-radius: 10px; padding: 10px 12px; font-weight: 600;
+  }
+  .list-item button { padding: 6px 11px; font-size: .8rem; }
+  .empty-note { color: var(--muted); font-size: .9rem; padding: 12px 0; text-align: center; }
+  .warn {
+    background: var(--full-soft); color: var(--full); border-radius: 10px;
+    padding: 10px 12px; font-size: .85rem; font-weight: 600; margin-bottom: 12px; display: none;
+  }
+  .warn.show { display: block; }
+  .modal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .slots { font-size: .85rem; color: var(--muted); margin-bottom: 12px; }
+  .slots b { color: var(--text); }
+
+  /* Settings modal */
+  .set-label { font-weight: 700; font-size: .9rem; margin: 4px 0 6px; }
+  .set-help { color: var(--muted); font-size: .82rem; margin: 0 0 14px; line-height: 1.5; }
+  textarea.url {
+    width: 100%; font-family: inherit; font-size: .9rem; padding: 11px;
+    border: 1px solid var(--line); border-radius: 10px; outline: none; resize: vertical; min-height: 70px;
+  }
+  textarea.url:focus { border-color: var(--primary); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: #1f2a44; color: #fff; padding: 12px 18px; border-radius: 12px; font-weight: 600;
+    font-size: .9rem; opacity: 0; pointer-events: none; transition: .25s; z-index: 100; max-width: 90%;
+    text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 560px) {
+    .day { min-height: 72px; padding: 5px; }
+    .chip { font-size: .63rem; padding: 1px 6px; }
+    .day .num { font-size: .82rem; }
+    .month-title { order: -1; width: 100%; margin-bottom: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📅 ตารางหยุดงานร้านเรา</h1>
+    <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 3 คน</p>
+  </header>
+
+  <div class="status" id="status"><span class="sdot"></span><span class="grow" id="statusText">กำลังเชื่อมต่อ...</span></div>
+
+  <div class="toolbar">
+    <div class="nav">
+      <button class="ghost" id="prev">‹</button>
+      <button class="ghost" id="today-btn">วันนี้</button>
+    </div>
+    <div class="month-title" id="monthTitle"></div>
+    <div class="nav">
+      <button class="ghost" id="next">›</button>
+      <button class="icon ghost" id="settings-btn" title="ตั้งค่า">⚙️</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--ok)"></i> ยังลงได้</span>
+    <span><i class="dot" style="background:var(--full)"></i> เต็มแล้ว (3 คน)</span>
+    <span><i class="dot" style="background:var(--primary)"></i> วันนี้</span>
+  </div>
+
+  <div class="calendar">
+    <div class="weekdays">
+      <div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div>
+    </div>
+    <div class="days" id="days"></div>
+  </div>
+</div>
+
+<!-- Modal: ลงชื่อหยุด -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalDate">วันที่</h2>
+    <p class="sub">ลงชื่อคนที่จะหยุดในวันนี้</p>
+    <div class="slots">ลงแล้ว <b id="slotUsed">0</b> / 3 คน · เหลือ <b id="slotLeft">3</b> ที่</div>
+    <div class="warn" id="warn">🚫 วันนี้มีคนลงครบ 3 คนแล้ว ลงเพิ่มไม่ได้</div>
+    <div class="field">
+      <input type="text" id="nameInput" placeholder="พิมพ์ชื่อคนที่จะหยุด..." maxlength="30" autocomplete="off">
+      <button class="primary" id="addBtn">เพิ่ม</button>
+    </div>
+    <div class="list" id="nameList"></div>
+    <div class="modal-foot">
+      <button class="ghost" id="closeBtn">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: ตั้งค่า -->
+<div class="overlay" id="setOverlay">
+  <div class="modal">
+    <h2>⚙️ ตั้งค่าการเชื่อมต่อ</h2>
+    <p class="sub">เชื่อมกับ Google Sheet เพื่อให้ทุกเครื่องเห็นข้อมูลตรงกัน</p>
+    <div class="set-label">ลิงก์ Google Apps Script (Web App URL)</div>
+    <p class="set-help">วางลิงก์ที่ได้จากการ Deploy Apps Script ที่ลงท้ายด้วย <b>/exec</b><br>
+      ถ้าเว้นว่างไว้ = เก็บข้อมูลในเครื่องนี้เครื่องเดียว (ไม่แชร์)</p>
+    <textarea class="url" id="apiInput" placeholder="https://script.google.com/macros/s/....../exec"></textarea>
+    <div class="modal-foot" style="justify-content:space-between; margin-top:14px;">
+      <button class="ghost" id="setCloseBtn">ยกเลิก</button>
+      <button class="primary" id="setSaveBtn">บันทึกและเชื่อมต่อ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ================== ตั้งค่า ==================
+     👉 เจ้าของร้าน: วางลิงก์ Web App จาก Google Apps Script ตรงนี้ 1 ครั้ง
+        แล้ว "อัป" ให้ทุกคนใช้ ทุกเครื่องจะเชื่อมอัตโนมัติ
+     ถ้าเว้นว่าง "" = โหมดเครื่องเดียว (เก็บในเครื่อง ไม่แชร์)          */
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwzfRk-x42pNBBguwM_RQoHmh7bQ5klBrRI4pYC9DISY5LwfloAAoYCMA3cYvXwOMUq/exec";
+  /* ============================================ */
+
+  const STORAGE_KEY = "shop_leave_calendar";   // cache ข้อมูลตาราง
+  const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
+  const MAX_PER_DAY = 3;
+  const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+                      "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+
+  let data = loadCache();
+  let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
+  let viewYear, viewMonth, selectedKey = null;
+  let busy = false;
+
+  const today = new Date();
+  viewYear = today.getFullYear();
+  viewMonth = today.getMonth();
+
+  /* ---------- เก็บ/อ่าน cache ในเครื่อง ---------- */
+  function loadCache() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function saveCache() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+  function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  /* ---------- แถบสถานะ ---------- */
+  const statusEl = document.getElementById("status");
+  const statusText = document.getElementById("statusText");
+  function setStatus(mode, text, withReload) {
+    statusEl.className = "status " + mode;
+    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` +
+      (withReload ? `<button class="ghost" id="reloadBtn">โหลดใหม่</button>` : "");
+    const rb = document.getElementById("reloadBtn");
+    if (rb) rb.addEventListener("click", syncFromServer);
+  }
+
+  /* ---------- เรียก Google Sheet ---------- */
+  async function apiGet() {
+    const res = await fetch(apiUrl, { method: "GET" });
+    return res.json();
+  }
+  async function apiPost(payload) {
+    // ส่งเป็น text/plain เพื่อเลี่ยง CORS preflight ของ Apps Script
+    const res = await fetch(apiUrl, { method: "POST", body: JSON.stringify(payload) });
+    return res.json();
+  }
+
+  // ดึงข้อมูลล่าสุดมายืนยันสถานะ (คืน true ถ้าสำเร็จ)
+  async function reconcile() {
+    try { const g = await apiGet(); if (g && g.ok) { data = g.data || {}; saveCache(); return true; } } catch(e) {}
+    return false;
+  }
+
+  async function syncFromServer() {
+    if (!apiUrl) { setStatus("local", "โหมดเครื่องเดียว (ยังไม่ได้เชื่อม Google Sheet)"); render(); return; }
+    setStatus("syncing", "กำลังซิงก์ข้อมูล...");
+    try {
+      const r = await apiGet();
+      if (r && r.ok) {
+        data = r.data || {};
+        saveCache();
+        render();
+        setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
+      } else { throw new Error("bad response"); }
+    } catch (e) {
+      render();
+      setStatus("offline", "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (แก้ไขต้องต่อเน็ต)", true);
+    }
+  }
+
+  /* ---------- ปฏิทิน ---------- */
+  const daysEl = document.getElementById("days");
+  const monthTitle = document.getElementById("monthTitle");
+
+  function render() {
+    monthTitle.textContent = `${monthNames[viewMonth]} ${viewYear + 543}`;
+    daysEl.innerHTML = "";
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const cell = document.createElement("div");
+      cell.className = "day empty";
+      daysEl.appendChild(cell);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = keyOf(viewYear, viewMonth, d);
+      const names = data[key] || [];
+      const cell = document.createElement("div");
+      cell.className = "day";
+      if (names.length >= MAX_PER_DAY) cell.classList.add("full");
+      const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+      if (isToday) cell.classList.add("today");
+      const chips = names.map(n => `<span class="chip">${escapeHtml(n)}</span>`).join("");
+      const badgeClass = names.length >= MAX_PER_DAY ? "count-badge full" : "count-badge";
+      const badge = names.length > 0 ? `<span class="${badgeClass}">${names.length}/3</span>` : "";
+      cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
+      cell.addEventListener("click", () => openModal(key));
+      daysEl.appendChild(cell);
+    }
+  }
+
+  /* ---------- Modal ลงชื่อ ---------- */
+  const overlay = document.getElementById("overlay");
+  const modalDate = document.getElementById("modalDate");
+  const nameInput = document.getElementById("nameInput");
+  const nameList = document.getElementById("nameList");
+  const warn = document.getElementById("warn");
+  const slotUsed = document.getElementById("slotUsed");
+  const slotLeft = document.getElementById("slotLeft");
+  const addBtn = document.getElementById("addBtn");
+
+  function openModal(key) {
+    selectedKey = key;
+    const [y, m, d] = key.split("-").map(Number);
+    modalDate.textContent = `${d} ${monthNames[m-1]} ${y + 543}`;
+    renderModal();
+    overlay.classList.add("show");
+    setTimeout(() => nameInput.focus(), 100);
+  }
+  function renderModal() {
+    const names = data[selectedKey] || [];
+    slotUsed.textContent = names.length;
+    slotLeft.textContent = Math.max(0, MAX_PER_DAY - names.length);
+    nameList.innerHTML = "";
+    if (names.length === 0) {
+      nameList.innerHTML = `<div class="empty-note">ยังไม่มีใครลงหยุดวันนี้</div>`;
+    } else {
+      names.forEach((n, i) => {
+        const item = document.createElement("div");
+        item.className = "list-item";
+        item.innerHTML = `<span>${i+1}. ${escapeHtml(n)}</span>`;
+        const del = document.createElement("button");
+        del.className = "danger"; del.textContent = "ลบ";
+        del.addEventListener("click", () => removeName(n));
+        item.appendChild(del);
+        nameList.appendChild(item);
+      });
+    }
+    const full = names.length >= MAX_PER_DAY;
+    warn.classList.toggle("show", full);
+    nameInput.disabled = full || busy;
+    addBtn.disabled = full || busy;
+  }
+
+  async function addName() {
+    const name = nameInput.value.trim();
+    if (!name || busy) return;
+    const names = data[selectedKey] || [];
+    if (names.length >= MAX_PER_DAY) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
+    if (names.some(n => n.toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
+
+    if (!apiUrl) { // โหมดเครื่องเดียว
+      names.push(name); data[selectedKey] = names; saveCache();
+      nameInput.value=""; renderModal(); render(); nameInput.focus(); return;
+    }
+    // โหมดออนไลน์: บันทึกขึ้น Google Sheet (เซิร์ฟเวอร์เช็คโควตาอีกชั้น)
+    busy = true; addBtn.textContent = "..."; renderModal();
+    try {
+      const r = await apiPost({ action:"add", date:selectedKey, name });
+      if (r && r.data) { data = r.data; saveCache(); }
+      if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
+      else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
+      else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
+      else nameInput.value = "";
+    } catch(e) {
+      // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect/CORS) — ดึงข้อมูลมายืนยัน
+      const okRefresh = await reconcile();
+      if (okRefresh) { if ((data[selectedKey]||[]).some(n=>n.toLowerCase()===name.toLowerCase())) nameInput.value=""; toast("ซิงก์ข้อมูลแล้ว"); }
+      else toast("📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อลงชื่อ");
+    } finally {
+      busy = false; addBtn.textContent = "เพิ่ม"; renderModal(); render();
+      if (!nameInput.disabled) nameInput.focus();
+    }
+  }
+
+  async function removeName(name) {
+    if (busy) return;
+    if (!apiUrl) {
+      let names = (data[selectedKey]||[]).filter(n => n !== name);
+      if (names.length === 0) delete data[selectedKey]; else data[selectedKey] = names;
+      saveCache(); renderModal(); render(); return;
+    }
+    busy = true; renderModal();
+    try {
+      const r = await apiPost({ action:"remove", date:selectedKey, name });
+      if (r && r.data) { data = r.data; saveCache(); }
+      if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
+    } catch(e) {
+      const okRefresh = await reconcile();
+      toast(okRefresh ? "ซิงก์ข้อมูลแล้ว" : "📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อแก้ไข");
+    } finally {
+      busy = false; renderModal(); render();
+    }
+  }
+
+  function closeModal() { overlay.classList.remove("show"); selectedKey = null; }
+
+  /* ---------- Settings ---------- */
+  const setOverlay = document.getElementById("setOverlay");
+  const apiInput = document.getElementById("apiInput");
+  document.getElementById("settings-btn").addEventListener("click", () => {
+    apiInput.value = apiUrl; setOverlay.classList.add("show");
+  });
+  document.getElementById("setCloseBtn").addEventListener("click", () => setOverlay.classList.remove("show"));
+  document.getElementById("setSaveBtn").addEventListener("click", () => {
+    const v = apiInput.value.trim();
+    apiUrl = v;
+    if (v) localStorage.setItem(API_KEY, v); else localStorage.removeItem(API_KEY);
+    setOverlay.classList.remove("show");
+    toast(v ? "เชื่อมต่อ Google Sheet แล้ว" : "เปลี่ยนเป็นโหมดเครื่องเดียว");
+    syncFromServer();
+  });
+
+  /* ---------- Toast ---------- */
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  /* ---------- Events ---------- */
+  addBtn.addEventListener("click", addName);
+  nameInput.addEventListener("keydown", e => { if (e.key === "Enter") addName(); });
+  document.getElementById("closeBtn").addEventListener("click", closeModal);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+  setOverlay.addEventListener("click", e => { if (e.target === setOverlay) setOverlay.classList.remove("show"); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeModal(); setOverlay.classList.remove("show"); } });
+  document.getElementById("prev").addEventListener("click", () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
+  document.getElementById("next").addEventListener("click", () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
+  document.getElementById("today-btn").addEventListener("click", () => { viewYear=today.getFullYear(); viewMonth=today.getMonth(); render(); });
+  window.addEventListener("online", syncFromServer);
+  window.addEventListener("offline", () => setStatus("offline","ออฟไลน์ · แสดงข้อมูลล่าสุด (แก้ไขต้องต่อเน็ต)", true));
+
+  /* ---------- เริ่มทำงาน ---------- */
+  render();
+  syncFromServer();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
+</script>
+</body>
+</html>

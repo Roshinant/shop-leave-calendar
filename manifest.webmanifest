@@ -1,6 +1,6 @@
 {
-  "name": "ตารางหยุดงานร้านเรา",
-  "short_name": "ตารางหยุด",
+  "name": "หยุดงาน โลตัสมือถือ",
+  "short_name": "หยุดงาน โลตัส",
   "description": "ปฏิทินลงชื่อหยุดงาน จำกัดวันละ 3 คน",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,6 +10,7 @@
   "theme_color": "#4f6cf7",
   "lang": "th",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "logo/logo.jpg", "sizes": "1254x1254", "type": "image/jpeg", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ]
 }

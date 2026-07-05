@@ -1,10 +1,11 @@
 /* Service Worker — ทำให้เปิดออฟไลน์ได้ (เก็บหน้าเว็บไว้ในเครื่อง) */
-const CACHE = "leave-cal-v1";
+const CACHE = "leave-cal-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon.svg",
+  "./logo/logo.jpg"
 ];
 
 self.addEventListener("install", (e) => {

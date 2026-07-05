@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ตารางหยุดงาน โลตัสมือถือ</title>
+<title>หยุดงาน โลตัสมือถือ</title>
 
 <!-- PWA / มือถือ -->
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#4f6cf7">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="logo/logo.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -39,8 +39,14 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 920px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 14px 60px; }
-  header h1 { font-size: 1.45rem; margin: 0 0 4px; }
-  header p { margin: 0 0 16px; color: var(--muted); font-size: .92rem; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  header .brand-logo {
+    height: 58px; width: 58px; flex: none; object-fit: contain; background: #fff;
+    border-radius: 14px; padding: 5px; border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 1.4rem; margin: 0 0 3px; }
+  header p { margin: 0; color: var(--muted); font-size: .9rem; }
+  @media (max-width: 560px) { header .brand-logo { height: 50px; width: 50px; } header h1 { font-size: 1.2rem; } }
 
   .toolbar {
     display: flex; align-items: center; justify-content: space-between;
@@ -187,8 +193,11 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>📅 ตารางหยุดงาน โลตัสมือถือ</h1>
-    <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 3 คน</p>
+    <img src="logo/logo.jpg" alt="โลตัสมือถือ" class="brand-logo">
+    <div>
+      <h1>หยุดงาน โลตัสมือถือ</h1>
+      <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 3 คน</p>
+    </div>
   </header>
 
   <div class="status" id="status"><span class="sdot"></span><span class="grow" id="statusText">กำลังเชื่อมต่อ...</span></div>

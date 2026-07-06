@@ -302,10 +302,10 @@
   const thaiMon = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
   function nameOf(e){ return (e && typeof e === "object") ? String(e.name) : String(e); }
   function tsOf(e){ return (e && typeof e === "object") ? e.ts : null; }
-  function fmtTime(iso){
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
+  function fmtTime(v){
+    if (!v) return "";
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return `ลง ${v} น.`;   // เซิร์ฟเวอร์ส่งข้อความพร้อมแสดงมาแล้ว เช่น "6 ก.ค. 08:30"
     const hh = String(d.getHours()).padStart(2,"0");
     const mm = String(d.getMinutes()).padStart(2,"0");
     return `ลง ${d.getDate()} ${thaiMon[d.getMonth()]} ${hh}:${mm} น.`;

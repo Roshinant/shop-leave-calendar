@@ -27,7 +27,22 @@ function normDate(v) {
   return String(v).trim();
 }
 
-/** อ่านข้อมูลทั้งหมด -> { "2026-07-04": [{name:"สมชาย", ts:"..."}, ...], ... } */
+var THAI_MON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+/** แปลงค่าเวลาที่บันทึกให้เป็นข้อความไทยพร้อมแสดง เช่น "6 ก.ค. 08:30" (ทนทานทุกชนิดค่า) */
+function fmtTs(ts, tz) {
+  var d = null;
+  if (ts && typeof ts.getTime === 'function') d = ts;        // เป็น Date อยู่แล้ว (duck-typing กัน instanceof เพี้ยน)
+  else if (typeof ts === 'number' && ts > 0) d = new Date(Math.round((ts - 25569) * 86400000)); // serial ของชีต
+  else if (ts) { var t = new Date(ts); if (!isNaN(t.getTime())) d = t; }  // เป็นข้อความ
+  if (!d || isNaN(d.getTime())) return "";
+  var day = Utilities.formatDate(d, tz, "d");
+  var mon = parseInt(Utilities.formatDate(d, tz, "M"), 10) - 1;
+  var hm = Utilities.formatDate(d, tz, "HH:mm");
+  return day + " " + THAI_MON[mon] + " " + hm;
+}
+
+/** อ่านข้อมูลทั้งหมด -> { "2026-07-04": [{name:"สมชาย", ts:"6 ก.ค. 08:30"}, ...], ... } */
 function readAll() {
   var sh = getSheet();
   var rows = sh.getDataRange().getValues();
@@ -37,11 +52,8 @@ function readAll() {
     var date = normDate(rows[i][0]);
     var name = String(rows[i][1]).trim();
     if (!date || !name) continue;
-    // แปลงเวลาที่บันทึก (คอลัมน์ 3) เป็นข้อความ ISO พร้อมโซนเวลา เช่น 2026-07-06T08:30:00+07:00
-    var ts = rows[i][2];
-    var tsStr = (ts instanceof Date) ? Utilities.formatDate(ts, tz, "yyyy-MM-dd'T'HH:mm:ssXXX") : "";
     if (!data[date]) data[date] = [];
-    data[date].push({ name: name, ts: tsStr });
+    data[date].push({ name: name, ts: fmtTs(rows[i][2], tz) });
   }
   return data;
 }
@@ -55,8 +67,19 @@ function namesForDate(sh, date) {
   return names;
 }
 
-/** GET: ส่งข้อมูลทั้งหมดกลับไป */
+/** GET: ส่งข้อมูลทั้งหมดกลับไป (?debug=1 เพื่อดูชนิดค่าจริงในแถวล่าสุด) */
 function doGet(e) {
+  if (e && e.parameter && e.parameter.debug) {
+    var sh = getSheet();
+    var rows = sh.getDataRange().getValues();
+    var last = rows[rows.length - 1];
+    return json({
+      ok: true, debug: true, rowCount: rows.length,
+      tz: Session.getScriptTimeZone(),
+      lastRow: last,
+      types: last.map(function (x) { return (x && typeof x.getTime === 'function') ? 'Date' : typeof x; })
+    });
+  }
   return json({ ok: true, data: readAll() });
 }
 

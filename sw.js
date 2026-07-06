@@ -1,11 +1,14 @@
 /* Service Worker — ทำให้เปิดออฟไลน์ได้ (เก็บหน้าเว็บไว้ในเครื่อง) */
-const CACHE = "leave-cal-v4";
+const CACHE = "leave-cal-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icon.svg",
-  "./logo/logo.jpg"
+  "./logo/logo.jpg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-maskable-512.png",
+  "./icons/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", (e) => {

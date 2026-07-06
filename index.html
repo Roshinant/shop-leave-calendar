@@ -154,7 +154,9 @@
     display: flex; align-items: center; justify-content: space-between;
     background: #f7f9ff; border-radius: 10px; padding: 10px 12px; font-weight: 600;
   }
-  .list-item button { padding: 6px 11px; font-size: .8rem; }
+  .list-item button { padding: 6px 11px; font-size: .8rem; flex: none; }
+  .li-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .li-time { font-size: .74rem; color: var(--muted); font-weight: 500; }
   .empty-note { color: var(--muted); font-size: .9rem; padding: 12px 0; text-align: center; }
   .warn {
     background: var(--full-soft); color: var(--full); border-radius: 10px;
@@ -296,6 +298,19 @@
   function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
   function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
+  /* รองรับข้อมูล 2 แบบ: "ชื่อ" (แบบเก่า) หรือ {name, ts} (แบบใหม่ที่มีเวลา) */
+  const thaiMon = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  function nameOf(e){ return (e && typeof e === "object") ? String(e.name) : String(e); }
+  function tsOf(e){ return (e && typeof e === "object") ? e.ts : null; }
+  function fmtTime(iso){
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    return `ลง ${d.getDate()} ${thaiMon[d.getMonth()]} ${hh}:${mm} น.`;
+  }
+
   /* ---------- แถบสถานะ ---------- */
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
@@ -364,7 +379,7 @@
       if (names.length >= MAX_PER_DAY) cell.classList.add("full");
       const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
       if (isToday) cell.classList.add("today");
-      const chips = names.map(n => `<span class="chip">${escapeHtml(n)}</span>`).join("");
+      const chips = names.map(n => `<span class="chip">${escapeHtml(nameOf(n))}</span>`).join("");
       const badgeClass = names.length >= MAX_PER_DAY ? "count-badge full" : "count-badge";
       const badge = names.length > 0 ? `<span class="${badgeClass}">${names.length}/3</span>` : "";
       cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
@@ -400,12 +415,14 @@
       nameList.innerHTML = `<div class="empty-note">ยังไม่มีใครลงหยุดวันนี้</div>`;
     } else {
       names.forEach((n, i) => {
+        const nm = nameOf(n), ts = fmtTime(tsOf(n));
         const item = document.createElement("div");
         item.className = "list-item";
-        item.innerHTML = `<span>${i+1}. ${escapeHtml(n)}</span>`;
+        item.innerHTML = `<div class="li-info"><span class="li-name">${i+1}. ${escapeHtml(nm)}</span>` +
+          (ts ? `<span class="li-time">🕒 ${ts}</span>` : "") + `</div>`;
         const del = document.createElement("button");
         del.className = "danger"; del.textContent = "ลบ";
-        del.addEventListener("click", () => removeName(n));
+        del.addEventListener("click", () => removeName(nm));
         item.appendChild(del);
         nameList.appendChild(item);
       });
@@ -421,10 +438,10 @@
     if (!name || busy) return;
     const names = data[selectedKey] || [];
     if (names.length >= MAX_PER_DAY) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
-    if (names.some(n => n.toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
+    if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
     if (!apiUrl) { // โหมดเครื่องเดียว
-      names.push(name); data[selectedKey] = names; saveCache();
+      names.push({ name, ts: new Date().toISOString() }); data[selectedKey] = names; saveCache();
       nameInput.value=""; renderModal(); render(); nameInput.focus(); return;
     }
     // โหมดออนไลน์: บันทึกขึ้น Google Sheet (เซิร์ฟเวอร์เช็คโควตาอีกชั้น)
@@ -439,7 +456,7 @@
     } catch(e) {
       // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect/CORS) — ดึงข้อมูลมายืนยัน
       const okRefresh = await reconcile();
-      if (okRefresh) { if ((data[selectedKey]||[]).some(n=>n.toLowerCase()===name.toLowerCase())) nameInput.value=""; toast("ซิงก์ข้อมูลแล้ว"); }
+      if (okRefresh) { if ((data[selectedKey]||[]).some(n=>nameOf(n).toLowerCase()===name.toLowerCase())) nameInput.value=""; toast("ซิงก์ข้อมูลแล้ว"); }
       else toast("📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อลงชื่อ");
     } finally {
       busy = false; addBtn.textContent = "เพิ่ม"; renderModal(); render();
@@ -450,7 +467,7 @@
   async function removeName(name) {
     if (busy) return;
     if (!apiUrl) {
-      let names = (data[selectedKey]||[]).filter(n => n !== name);
+      let names = (data[selectedKey]||[]).filter(n => nameOf(n) !== name);
       if (names.length === 0) delete data[selectedKey]; else data[selectedKey] = names;
       saveCache(); renderModal(); render(); return;
     }

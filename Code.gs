@@ -27,17 +27,21 @@ function normDate(v) {
   return String(v).trim();
 }
 
-/** อ่านข้อมูลทั้งหมด -> { "2026-07-04": ["สมชาย","สมหญิง"], ... } */
+/** อ่านข้อมูลทั้งหมด -> { "2026-07-04": [{name:"สมชาย", ts:"..."}, ...], ... } */
 function readAll() {
   var sh = getSheet();
   var rows = sh.getDataRange().getValues();
+  var tz = Session.getScriptTimeZone();
   var data = {};
   for (var i = 1; i < rows.length; i++) {
     var date = normDate(rows[i][0]);
     var name = String(rows[i][1]).trim();
     if (!date || !name) continue;
+    // แปลงเวลาที่บันทึก (คอลัมน์ 3) เป็นข้อความ ISO พร้อมโซนเวลา เช่น 2026-07-06T08:30:00+07:00
+    var ts = rows[i][2];
+    var tsStr = (ts instanceof Date) ? Utilities.formatDate(ts, tz, "yyyy-MM-dd'T'HH:mm:ssXXX") : "";
     if (!data[date]) data[date] = [];
-    data[date].push(name);
+    data[date].push({ name: name, ts: tsStr });
   }
   return data;
 }

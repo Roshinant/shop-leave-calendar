@@ -7,16 +7,6 @@
 var SHEET_NAME = 'Leaves';
 var MAX_PER_DAY = 3;
 
-/**
- * ตรวจว่าเป็นแอดมินไหม โดยเทียบกับรหัสลับที่เก็บใน Script Properties (ไม่ฝังในโค้ด)
- * วิธีตั้งรหัส: Apps Script → Project Settings (เฟือง ⚙️) → Script Properties →
- *   Add property → Property: ADMIN_KEY | Value: <รหัสลับของหัวหน้า> → Save
- */
-function isAdmin(key) {
-  var k = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
-  return !!(k && key && String(key) === k);
-}
-
 function getSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME);
@@ -104,18 +94,10 @@ function doPost(e) {
     var name = String(req.name || '').trim();
     var sh = getSheet();
 
-    var admin = isAdmin(req.key);
-
-    // ตรวจรหัสแอดมิน (ให้หน้าเว็บรู้ว่าปลดล็อกได้ไหม)
-    if (action === 'auth') {
-      return json({ ok: true, admin: admin });
-    }
-
     if (action === 'add') {
       if (!date || !name) return json({ ok: false, error: 'invalid', data: readAll() });
       var current = namesForDate(sh, date);
-      var force = req.force && admin; // แอดมินเท่านั้นที่เพิ่มเกิน 3 คนได้
-      if (!force && current.length >= MAX_PER_DAY) {
+      if (current.length >= MAX_PER_DAY) {
         return json({ ok: false, error: 'full', data: readAll() });
       }
       var dup = current.some(function (n) { return n.toLowerCase() === name.toLowerCase(); });
@@ -125,12 +107,11 @@ function doPost(e) {
       sh.appendRow([date, name, new Date()]);
       var r = sh.getLastRow();
       sh.getRange(r, 1).setNumberFormat('@').setValue(date);
-      return json({ ok: true, admin: admin, data: readAll() });
+      return json({ ok: true, data: readAll() });
     }
 
     if (action === 'remove') {
-      // ลบได้เฉพาะแอดมินเท่านั้น
-      if (!admin) return json({ ok: false, error: 'forbidden', data: readAll() });
+      // ทุกคนลบได้
       var rows = sh.getDataRange().getValues();
       for (var i = rows.length - 1; i >= 1; i--) {
         if (normDate(rows[i][0]) === date &&

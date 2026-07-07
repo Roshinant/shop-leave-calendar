@@ -262,23 +262,9 @@
     <p class="set-help">วางลิงก์ที่ได้จากการ Deploy Apps Script ที่ลงท้ายด้วย <b>/exec</b><br>
       ถ้าเว้นว่างไว้ = เก็บข้อมูลในเครื่องนี้เครื่องเดียว (ไม่แชร์)</p>
     <textarea class="url" id="apiInput" placeholder="https://script.google.com/macros/s/....../exec"></textarea>
-    <div class="modal-foot" style="justify-content:flex-end; margin-top:12px;">
-      <button class="primary" id="setSaveBtn">บันทึกและเชื่อมต่อ</button>
-    </div>
-
-    <hr style="border:none; border-top:1px solid var(--line); margin:18px 0;">
-
-    <div class="set-label">👑 โหมดแอดมิน (สำหรับหัวหน้าเท่านั้น)</div>
-    <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อกการ <b>ลบชื่อ</b> และ <b>เพิ่มเกิน 3 คน</b><br>
-      พนักงานทั่วไปไม่ต้องกรอก (ลงชื่อได้ตามปกติ แต่ลบไม่ได้)</p>
-    <div class="field" id="adminField">
-      <input type="password" id="adminInput" placeholder="รหัสแอดมิน..." autocomplete="off">
-      <button class="primary" id="adminBtn">เข้าโหมดแอดมิน</button>
-    </div>
-    <button class="danger" id="adminExitBtn" style="display:none; width:100%;">ออกจากโหมดแอดมิน</button>
-
-    <div class="modal-foot" style="margin-top:16px;">
+    <div class="modal-foot" style="justify-content:space-between; margin-top:14px;">
       <button class="ghost" id="setCloseBtn">ปิด</button>
+      <button class="primary" id="setSaveBtn">บันทึกและเชื่อมต่อ</button>
     </div>
   </div>
 </div>
@@ -295,7 +281,6 @@
 
   const STORAGE_KEY = "shop_leave_calendar";   // cache ข้อมูลตาราง
   const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
-  const ADMIN_LS = "shop_leave_adminkey";      // เก็บรหัสแอดมินในเครื่องหัวหน้า
   const MAX_PER_DAY = 3;
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
@@ -305,8 +290,6 @@
   let opSeq = 0;
   let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
   let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
-  let adminKey = localStorage.getItem(ADMIN_LS) || "";
-  let isAdminMode = !!adminKey;                 // เชื่อค่าที่เก็บไว้ก่อน แล้วค่อยยืนยันกับเซิร์ฟเวอร์
   let viewYear, viewMonth, selectedKey = null;
 
   const today = new Date();
@@ -362,17 +345,13 @@
   /* ---------- แถบสถานะ ---------- */
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
-  let lastStatus = ["local", "", false];
   function setStatus(mode, text, withReload) {
-    lastStatus = [mode, text, withReload];
     statusEl.className = "status " + mode;
-    const adminBadge = isAdminMode ? `<span class="admin-badge">👑 แอดมิน</span>` : "";
-    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` + adminBadge +
+    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` +
       (withReload ? `<button class="ghost" id="reloadBtn">โหลดใหม่</button>` : "");
     const rb = document.getElementById("reloadBtn");
     if (rb) rb.addEventListener("click", syncFromServer);
   }
-  function refreshStatus() { setStatus(lastStatus[0], lastStatus[1], lastStatus[2]); }
 
   /* ---------- เรียก Google Sheet ---------- */
   async function apiGet() {
@@ -473,7 +452,7 @@
         item.className = "list-item" + (pend ? " item-pending" : "");
         item.innerHTML = `<div class="li-info"><span class="li-name">${i+1}. ${escapeHtml(nm)}</span>` +
           (ts ? `<span class="li-time">${pend ? "" : "🕒 "}${escapeHtml(ts)}</span>` : "") + `</div>`;
-        if (isAdminMode && !pend) {   // ลบได้เฉพาะแอดมิน (และรายการที่บันทึกแล้วเท่านั้น)
+        if (!pend) {   // ทุกคนลบได้ (เฉพาะรายการที่บันทึกแล้ว)
           const del = document.createElement("button");
           del.className = "danger"; del.textContent = "ลบ";
           del.addEventListener("click", () => removeName(nm));
@@ -483,20 +462,10 @@
       });
     }
     const full = names.length >= MAX_PER_DAY;
-    // แอดมินเพิ่มเกิน 3 คนได้ / คนทั่วไปเต็มแล้วลงเพิ่มไม่ได้ และลบไม่ได้ (ต้องแจ้งแอดมิน)
-    let show = true, cls = "warn show", html = "";
-    if (isAdminMode) {
-      if (full) { html = "👑 วันนี้ครบ 3 คนแล้ว — โหมดแอดมินเพิ่มเกินได้"; cls = "warn show warn-info"; }
-      else show = false;
-    } else {
-      if (full) { html = "🚫 วันนี้เต็มแล้ว (3 คน) ลงเพิ่มไม่ได้"; }
-      else if (names.length > 0) { html = "ℹ️ ต้องการลบชื่อ? แจ้งหัวหน้า (แอดมิน)"; cls = "warn show warn-info"; }
-      else show = false;
-    }
-    warn.className = show ? cls : "warn";
-    warn.innerHTML = show ? html : "";
-    nameInput.disabled = (full && !isAdminMode);
-    addBtn.disabled = (full && !isAdminMode);
+    warn.className = full ? "warn show" : "warn";
+    warn.innerHTML = full ? "🚫 วันนี้เต็มแล้ว (3 คน) ลงเพิ่มไม่ได้" : "";
+    nameInput.disabled = full;
+    addBtn.disabled = full;
   }
 
   // อัปเดตหน้าจอทันที (ใช้หลังแก้ pendingOps / serverData)
@@ -506,7 +475,7 @@
     const name = nameInput.value.trim();
     if (!name) return;
     const names = data[selectedKey] || [];
-    if (names.length >= MAX_PER_DAY && !isAdminMode) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
+    if (names.length >= MAX_PER_DAY) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
     if (!apiUrl) { // โหมดเครื่องเดียว
@@ -520,10 +489,8 @@
     pendingOps.push(op);
     refreshView(); nameInput.value=""; nameInput.focus();
 
-    const payload = { action:"add", date: op.date, name: op.name };
-    if (isAdminMode) { payload.key = adminKey; payload.force = true; } // แอดมินเพิ่มเกิน 3 ได้
     try {
-      const r = await apiPost(payload);
+      const r = await apiPost({ action:"add", date: op.date, name: op.name });
       if (r && r.data) { serverData = r.data; saveCache(); }
       if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
       else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
@@ -539,8 +506,6 @@
   }
 
   async function removeName(name) {
-    if (!isAdminMode) { toast("เฉพาะแอดมินเท่านั้นที่ลบได้"); return; }
-
     if (!apiUrl) { // โหมดเครื่องเดียว
       serverData[selectedKey] = (serverData[selectedKey]||[]).filter(n => nameOf(n) !== name);
       if (serverData[selectedKey].length === 0) delete serverData[selectedKey];
@@ -553,10 +518,9 @@
     refreshView();
 
     try {
-      const r = await apiPost({ action:"remove", date: op.date, name: op.name, key: adminKey });
+      const r = await apiPost({ action:"remove", date: op.date, name: op.name });
       if (r && r.data) { serverData = r.data; saveCache(); }
-      if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
-      else if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
+      if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
     } catch(e) {
       const ok = await reconcile();
       const stillThere = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
@@ -571,64 +535,19 @@
   /* ---------- Settings ---------- */
   const setOverlay = document.getElementById("setOverlay");
   const apiInput = document.getElementById("apiInput");
-  const adminInput = document.getElementById("adminInput");
-  const adminField = document.getElementById("adminField");
-  const adminExitBtn = document.getElementById("adminExitBtn");
-  const adminHelp = document.getElementById("adminHelp");
 
   document.getElementById("settings-btn").addEventListener("click", () => {
-    apiInput.value = apiUrl; adminInput.value = ""; updateAdminUI(); setOverlay.classList.add("show");
+    apiInput.value = apiUrl; setOverlay.classList.add("show");
   });
   document.getElementById("setCloseBtn").addEventListener("click", () => setOverlay.classList.remove("show"));
   document.getElementById("setSaveBtn").addEventListener("click", () => {
     const v = apiInput.value.trim();
     apiUrl = v;
     if (v) localStorage.setItem(API_KEY, v); else localStorage.removeItem(API_KEY);
+    setOverlay.classList.remove("show");
     toast(v ? "เชื่อมต่อ Google Sheet แล้ว" : "เปลี่ยนเป็นโหมดเครื่องเดียว");
     syncFromServer();
   });
-
-  /* ---------- Admin ---------- */
-  function updateAdminUI() {
-    if (isAdminMode) {
-      adminField.style.display = "none";
-      adminExitBtn.style.display = "block";
-      adminHelp.innerHTML = "✅ กำลังอยู่ในโหมดแอดมิน — ลบชื่อได้ และเพิ่มเกิน 3 คนได้";
-    } else {
-      adminField.style.display = "flex";
-      adminExitBtn.style.display = "none";
-      adminHelp.innerHTML = "ใส่รหัสแอดมินเพื่อปลดล็อกการ <b>ลบชื่อ</b> และ <b>เพิ่มเกิน 3 คน</b><br>พนักงานทั่วไปไม่ต้องกรอก (ลงชื่อได้ตามปกติ แต่ลบไม่ได้)";
-    }
-  }
-  async function enterAdmin() {
-    const k = adminInput.value.trim();
-    if (!k) return;
-    if (!apiUrl) { // โหมดเครื่องเดียว: ไม่มีเซิร์ฟเวอร์ให้ตรวจ ใช้เครื่องตัวเองก็ถือเป็นแอดมิน
-      adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k);
-      finishAdmin(true); return;
-    }
-    const btn = document.getElementById("adminBtn");
-    btn.disabled = true; btn.textContent = "...";
-    try {
-      const r = await apiPost({ action:"auth", key:k });
-      if (r && r.ok && r.admin) {
-        adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k);
-        finishAdmin(true);
-      } else { toast("รหัสแอดมินไม่ถูกต้อง"); }
-    } catch(e) { toast("📴 ต่อเน็ตไม่ได้ ลองใหม่"); }
-    finally { btn.disabled = false; btn.textContent = "เข้าโหมดแอดมิน"; }
-  }
-  function exitAdmin() {
-    adminKey = ""; isAdminMode = false; localStorage.removeItem(ADMIN_LS);
-    finishAdmin(false);
-  }
-  function finishAdmin(on) {
-    adminInput.value = ""; updateAdminUI(); refreshStatus(); renderModal(); render();
-    toast(on ? "👑 เข้าสู่โหมดแอดมินแล้ว" : "ออกจากโหมดแอดมินแล้ว");
-  }
-  document.getElementById("adminBtn").addEventListener("click", enterAdmin);
-  adminInput.addEventListener("keydown", e => { if (e.key === "Enter") enterAdmin(); });
-  adminExitBtn.addEventListener("click", exitAdmin);
 
   /* ---------- Toast ---------- */
   let toastTimer;
@@ -656,13 +575,6 @@
   recompute();
   render();
   syncFromServer();
-
-  // ยืนยันรหัสแอดมินที่เก็บไว้กับเซิร์ฟเวอร์ (เผื่อรหัสถูกเปลี่ยน) — ถ้าไม่ผ่านให้ออกจากโหมด
-  if (isAdminMode && apiUrl) {
-    apiPost({ action:"auth", key: adminKey })
-      .then(r => { if (!(r && r.ok && r.admin)) exitAdmin(); })
-      .catch(() => {});
-  }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));

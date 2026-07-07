@@ -7,6 +7,17 @@
 var SHEET_NAME = 'Leaves';
 var MAX_PER_DAY = 3;
 
+/**
+ * ตรวจว่าเป็นแอดมิน (หัวหน้า) ไหม — ใช้เฉพาะตอน "เพิ่มเกิน 3 คน/วัน" เท่านั้น
+ * รหัสเก็บใน Script Properties (ไม่ฝังในโค้ด public)
+ * ตั้งรหัส: Apps Script → Project Settings (⚙️) → Script Properties →
+ *   Add property → Property: ADMIN_KEY | Value: <รหัสลับ> → Save
+ */
+function isAdmin(key) {
+  var k = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+  return !!(k && key && String(key) === k);
+}
+
 function getSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME);
@@ -94,10 +105,16 @@ function doPost(e) {
     var name = String(req.name || '').trim();
     var sh = getSheet();
 
+    // ตรวจรหัสแอดมิน (ให้หน้าเว็บรู้ว่าปลดล็อก "เพิ่มเกิน 3" ได้ไหม)
+    if (action === 'auth') {
+      return json({ ok: true, admin: isAdmin(req.key) });
+    }
+
     if (action === 'add') {
       if (!date || !name) return json({ ok: false, error: 'invalid', data: readAll() });
       var current = namesForDate(sh, date);
-      if (current.length >= MAX_PER_DAY) {
+      var force = req.force && isAdmin(req.key);   // แอดมินเท่านั้นที่เพิ่มเกิน 3 คนได้
+      if (!force && current.length >= MAX_PER_DAY) {
         return json({ ok: false, error: 'full', data: readAll() });
       }
       var dup = current.some(function (n) { return n.toLowerCase() === name.toLowerCase(); });

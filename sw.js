@@ -1,5 +1,5 @@
 /* Service Worker — ทำให้เปิดออฟไลน์ได้ (เก็บหน้าเว็บไว้ในเครื่อง) */
-const CACHE = "leave-cal-v8";
+const CACHE = "leave-cal-v9";
 const ASSETS = [
   "./",
   "./index.html",

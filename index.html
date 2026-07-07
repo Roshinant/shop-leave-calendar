@@ -165,6 +165,7 @@
   }
   .warn.show { display: block; }
   .warn.warn-info { background: var(--primary-soft); color: var(--primary); }
+  .sum-count { flex: none; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .82rem; padding: 3px 12px; border-radius: 20px; }
   .chip.chip-pending { opacity: .55; }
   .list-item.item-pending { opacity: .6; }
   .list-item.item-pending .li-time { color: var(--primary); }
@@ -217,6 +218,7 @@
     <div class="month-title" id="monthTitle"></div>
     <div class="nav">
       <button class="ghost" id="next">›</button>
+      <button class="icon ghost" id="summary-btn" title="สรุปวันหยุด">📊</button>
       <button class="icon ghost" id="settings-btn" title="ตั้งค่า">⚙️</button>
     </div>
   </div>
@@ -262,11 +264,36 @@
     <p class="set-help">วางลิงก์ที่ได้จากการ Deploy Apps Script ที่ลงท้ายด้วย <b>/exec</b><br>
       ถ้าเว้นว่างไว้ = เก็บข้อมูลในเครื่องนี้เครื่องเดียว (ไม่แชร์)</p>
     <textarea class="url" id="apiInput" placeholder="https://script.google.com/macros/s/....../exec"></textarea>
-    <div class="modal-foot" style="justify-content:space-between; margin-top:14px;">
-      <button class="ghost" id="setCloseBtn">ปิด</button>
+    <div class="modal-foot" style="justify-content:flex-end; margin-top:12px;">
       <button class="primary" id="setSaveBtn">บันทึกและเชื่อมต่อ</button>
     </div>
+
+    <hr style="border:none; border-top:1px solid var(--line); margin:18px 0;">
+
+    <div class="set-label">👑 โหมดแอดมิน (สำหรับหัวหน้า)</div>
+    <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อก <b>เพิ่มคนเกิน 3 คน/วัน</b> ในวันที่ต้องการ<br>
+      พนักงานทั่วไปไม่ต้องกรอก (เพิ่ม/ลบได้ตามปกติ แต่เพิ่มได้ไม่เกิน 3)</p>
+    <div class="field" id="adminField">
+      <input type="password" id="adminInput" placeholder="รหัสแอดมิน..." autocomplete="off">
+      <button class="primary" id="adminBtn">เข้าโหมดแอดมิน</button>
+    </div>
+    <button class="danger" id="adminExitBtn" style="display:none; width:100%;">ออกจากโหมดแอดมิน</button>
+
+    <div class="modal-foot" style="margin-top:16px;">
+      <button class="ghost" id="setCloseBtn">ปิด</button>
+    </div>
   </div>
+</div>
+
+<!-- Modal: สรุปวันหยุด -->
+<div class="overlay" id="sumOverlay">
+  <div class="modal">
+    <h2 id="sumTitle">📊 สรุปวันหยุด</h2>
+    <p class="sub" id="sumSub">รวมจำนวนวันที่แต่ละคนลงหยุดในเดือนนี้</p>
+    <div class="list" id="sumList"></div>
+    <div class="modal-foot">
+      <button class="ghost" id="sumCloseBtn">ปิด</button>
+    </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -281,6 +308,7 @@
 
   const STORAGE_KEY = "shop_leave_calendar";   // cache ข้อมูลตาราง
   const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
+  const ADMIN_LS = "shop_leave_adminkey";      // เก็บรหัสแอดมินในเครื่องหัวหน้า
   const MAX_PER_DAY = 3;
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
@@ -290,6 +318,8 @@
   let opSeq = 0;
   let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
   let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
+  let adminKey = localStorage.getItem(ADMIN_LS) || "";
+  let isAdminMode = !!adminKey;   // ใช้เฉพาะปลดล็อก "เพิ่มเกิน 3 คน"
   let viewYear, viewMonth, selectedKey = null;
 
   const today = new Date();
@@ -345,13 +375,17 @@
   /* ---------- แถบสถานะ ---------- */
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
+  let lastStatus = ["local", "", false];
   function setStatus(mode, text, withReload) {
+    lastStatus = [mode, text, withReload];
     statusEl.className = "status " + mode;
-    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` +
+    const adminBadge = isAdminMode ? `<span class="admin-badge">👑 แอดมิน</span>` : "";
+    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` + adminBadge +
       (withReload ? `<button class="ghost" id="reloadBtn">โหลดใหม่</button>` : "");
     const rb = document.getElementById("reloadBtn");
     if (rb) rb.addEventListener("click", syncFromServer);
   }
+  function refreshStatus() { setStatus(lastStatus[0], lastStatus[1], lastStatus[2]); }
 
   /* ---------- เรียก Google Sheet ---------- */
   async function apiGet() {
@@ -462,10 +496,18 @@
       });
     }
     const full = names.length >= MAX_PER_DAY;
-    warn.className = full ? "warn show" : "warn";
-    warn.innerHTML = full ? "🚫 วันนี้เต็มแล้ว (3 คน) ลงเพิ่มไม่ได้" : "";
-    nameInput.disabled = full;
-    addBtn.disabled = full;
+    if (full && isAdminMode) {
+      warn.className = "warn show warn-info";
+      warn.innerHTML = "👑 ครบ 3 คนแล้ว — โหมดแอดมินเพิ่มเกินได้";
+    } else if (full) {
+      warn.className = "warn show";
+      warn.innerHTML = "🚫 วันนี้เต็มแล้ว (3 คน) ลงเพิ่มไม่ได้";
+    } else {
+      warn.className = "warn";
+      warn.innerHTML = "";
+    }
+    nameInput.disabled = full && !isAdminMode;
+    addBtn.disabled = full && !isAdminMode;
   }
 
   // อัปเดตหน้าจอทันที (ใช้หลังแก้ pendingOps / serverData)
@@ -475,7 +517,7 @@
     const name = nameInput.value.trim();
     if (!name) return;
     const names = data[selectedKey] || [];
-    if (names.length >= MAX_PER_DAY) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
+    if (names.length >= MAX_PER_DAY && !isAdminMode) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
     if (!apiUrl) { // โหมดเครื่องเดียว
@@ -489,8 +531,10 @@
     pendingOps.push(op);
     refreshView(); nameInput.value=""; nameInput.focus();
 
+    const payload = { action:"add", date: op.date, name: op.name };
+    if (isAdminMode) { payload.key = adminKey; payload.force = true; } // แอดมินเพิ่มเกิน 3 ได้
     try {
-      const r = await apiPost({ action:"add", date: op.date, name: op.name });
+      const r = await apiPost(payload);
       if (r && r.data) { serverData = r.data; saveCache(); }
       if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
       else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
@@ -535,19 +579,83 @@
   /* ---------- Settings ---------- */
   const setOverlay = document.getElementById("setOverlay");
   const apiInput = document.getElementById("apiInput");
+  const adminInput = document.getElementById("adminInput");
+  const adminField = document.getElementById("adminField");
+  const adminExitBtn = document.getElementById("adminExitBtn");
+  const adminHelp = document.getElementById("adminHelp");
 
   document.getElementById("settings-btn").addEventListener("click", () => {
-    apiInput.value = apiUrl; setOverlay.classList.add("show");
+    apiInput.value = apiUrl; adminInput.value = ""; updateAdminUI(); setOverlay.classList.add("show");
   });
   document.getElementById("setCloseBtn").addEventListener("click", () => setOverlay.classList.remove("show"));
   document.getElementById("setSaveBtn").addEventListener("click", () => {
     const v = apiInput.value.trim();
     apiUrl = v;
     if (v) localStorage.setItem(API_KEY, v); else localStorage.removeItem(API_KEY);
-    setOverlay.classList.remove("show");
     toast(v ? "เชื่อมต่อ Google Sheet แล้ว" : "เปลี่ยนเป็นโหมดเครื่องเดียว");
     syncFromServer();
   });
+
+  /* ---------- Admin (ใช้แค่ปลดล็อกเพิ่มเกิน 3 คน) ---------- */
+  function updateAdminUI() {
+    if (isAdminMode) {
+      adminField.style.display = "none";
+      adminExitBtn.style.display = "block";
+      adminHelp.innerHTML = "✅ กำลังอยู่ในโหมดแอดมิน — เพิ่มคนเกิน 3 คน/วันได้";
+    } else {
+      adminField.style.display = "flex";
+      adminExitBtn.style.display = "none";
+      adminHelp.innerHTML = "ใส่รหัสแอดมินเพื่อปลดล็อก <b>เพิ่มคนเกิน 3 คน/วัน</b> ในวันที่ต้องการ<br>พนักงานทั่วไปไม่ต้องกรอก (เพิ่ม/ลบได้ตามปกติ แต่เพิ่มได้ไม่เกิน 3)";
+    }
+  }
+  async function enterAdmin() {
+    const k = adminInput.value.trim();
+    if (!k) return;
+    if (!apiUrl) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); return; }
+    const btn = document.getElementById("adminBtn");
+    btn.disabled = true; btn.textContent = "...";
+    try {
+      const r = await apiPost({ action:"auth", key:k });
+      if (r && r.ok && r.admin) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); }
+      else toast("รหัสแอดมินไม่ถูกต้อง");
+    } catch(e) { toast("📴 ต่อเน็ตไม่ได้ ลองใหม่"); }
+    finally { btn.disabled = false; btn.textContent = "เข้าโหมดแอดมิน"; }
+  }
+  function exitAdmin() { adminKey = ""; isAdminMode = false; localStorage.removeItem(ADMIN_LS); finishAdmin(false); }
+  function finishAdmin(on) {
+    adminInput.value = ""; updateAdminUI(); refreshStatus(); refreshView();
+    toast(on ? "👑 เข้าสู่โหมดแอดมินแล้ว" : "ออกจากโหมดแอดมินแล้ว");
+  }
+  document.getElementById("adminBtn").addEventListener("click", enterAdmin);
+  adminInput.addEventListener("keydown", e => { if (e.key === "Enter") enterAdmin(); });
+  adminExitBtn.addEventListener("click", exitAdmin);
+
+  /* ---------- สรุปวันหยุดของเดือน ---------- */
+  const sumOverlay = document.getElementById("sumOverlay");
+  function openSummary() {
+    const prefix = keyOf(viewYear, viewMonth, 1).slice(0, 8); // "YYYY-MM-"
+    const tally = new Map();  // ชื่อ(แสดง) -> จำนวนวัน
+    for (const key in data) {
+      if (!key.startsWith(prefix)) continue;
+      for (const e of data[key]) {
+        const nm = nameOf(e);
+        tally.set(nm, (tally.get(nm) || 0) + 1);
+      }
+    }
+    const rows = [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "th"));
+    document.getElementById("sumTitle").textContent = `📊 สรุปวันหยุด · ${monthNames[viewMonth]} ${viewYear + 543}`;
+    document.getElementById("sumSub").textContent = rows.length
+      ? `มีคนลงหยุด ${rows.length} คน · รวม ${rows.reduce((s, r) => s + r[1], 0)} วัน-คน`
+      : "เดือนนี้ยังไม่มีใครลงหยุด";
+    const list = document.getElementById("sumList");
+    list.innerHTML = rows.length
+      ? rows.map((r, i) => `<div class="list-item"><span class="li-name">${i+1}. ${escapeHtml(r[0])}</span><span class="sum-count">${r[1]} วัน</span></div>`).join("")
+      : `<div class="empty-note">— ไม่มีข้อมูล —</div>`;
+    sumOverlay.classList.add("show");
+  }
+  document.getElementById("summary-btn").addEventListener("click", openSummary);
+  document.getElementById("sumCloseBtn").addEventListener("click", () => sumOverlay.classList.remove("show"));
+  sumOverlay.addEventListener("click", e => { if (e.target === sumOverlay) sumOverlay.classList.remove("show"); });
 
   /* ---------- Toast ---------- */
   let toastTimer;
@@ -564,7 +672,7 @@
   document.getElementById("closeBtn").addEventListener("click", closeModal);
   overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
   setOverlay.addEventListener("click", e => { if (e.target === setOverlay) setOverlay.classList.remove("show"); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeModal(); setOverlay.classList.remove("show"); } });
+  document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeModal(); setOverlay.classList.remove("show"); sumOverlay.classList.remove("show"); } });
   document.getElementById("prev").addEventListener("click", () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
   document.getElementById("next").addEventListener("click", () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
   document.getElementById("today-btn").addEventListener("click", () => { viewYear=today.getFullYear(); viewMonth=today.getMonth(); render(); });
@@ -575,6 +683,13 @@
   recompute();
   render();
   syncFromServer();
+
+  // ยืนยันรหัสแอดมินที่เก็บไว้กับเซิร์ฟเวอร์ (เผื่อรหัสถูกเปลี่ยน) — ไม่ผ่านให้ออกจากโหมด
+  if (isAdminMode && apiUrl) {
+    apiPost({ action:"auth", key: adminKey })
+      .then(r => { if (!(r && r.ok && r.admin)) exitAdmin(); })
+      .catch(() => {});
+  }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));

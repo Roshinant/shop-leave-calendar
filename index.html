@@ -165,6 +165,9 @@
   }
   .warn.show { display: block; }
   .warn.warn-info { background: var(--primary-soft); color: var(--primary); }
+  .chip.chip-pending { opacity: .55; }
+  .list-item.item-pending { opacity: .6; }
+  .list-item.item-pending .li-time { color: var(--primary); }
   .modal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
   .slots { font-size: .85rem; color: var(--muted); margin-bottom: 12px; }
   .slots b { color: var(--text); }
@@ -297,12 +300,14 @@
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 
-  let data = loadCache();
+  let serverData = loadCache();   // ข้อมูลล่าสุดจากเซิร์ฟเวอร์ (หรือ cache)
+  let pendingOps = [];            // รายการที่กดแล้วแต่ยังไม่ยืนยันจากเซิร์ฟเวอร์
+  let opSeq = 0;
+  let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
   let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
   let adminKey = localStorage.getItem(ADMIN_LS) || "";
   let isAdminMode = !!adminKey;                 // เชื่อค่าที่เก็บไว้ก่อน แล้วค่อยยืนยันกับเซิร์ฟเวอร์
   let viewYear, viewMonth, selectedKey = null;
-  let busy = false;
 
   const today = new Date();
   viewYear = today.getFullYear();
@@ -313,8 +318,32 @@
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
     catch { return {}; }
   }
-  function saveCache() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  function saveCache() { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverData)); }
   function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+
+  /* ---------- รวม server + รายการ pending เป็นข้อมูลที่แสดง ---------- */
+  function cloneData(src){
+    const o = {};
+    for (const k in src) o[k] = (src[k]||[]).map(e => (e && typeof e==="object") ? {name:e.name, ts:e.ts} : {name:String(e), ts:null});
+    return o;
+  }
+  function applyPending(){
+    const o = cloneData(serverData);
+    for (const op of pendingOps){
+      if (op.type === "add"){
+        if (!o[op.date]) o[op.date] = [];
+        if (!o[op.date].some(e => nameOf(e).toLowerCase() === op.name.toLowerCase()))
+          o[op.date].push({ name: op.name, ts: op.ts, pending: true });
+      } else if (op.type === "remove"){
+        if (o[op.date]) o[op.date] = o[op.date].filter(e => nameOf(e).toLowerCase() !== op.name.toLowerCase());
+        if (o[op.date] && o[op.date].length === 0) delete o[op.date];
+      }
+    }
+    return o;
+  }
+  function recompute(){ data = applyPending(); }
+  function dropOp(id){ pendingOps = pendingOps.filter(o => o.id !== id); }
+  function pendingOf(e){ return !!(e && typeof e==="object" && e.pending); }
   function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
   /* รองรับข้อมูล 2 แบบ: "ชื่อ" (แบบเก่า) หรือ {name, ts} (แบบใหม่ที่มีเวลา) */
@@ -358,7 +387,7 @@
 
   // ดึงข้อมูลล่าสุดมายืนยันสถานะ (คืน true ถ้าสำเร็จ)
   async function reconcile() {
-    try { const g = await apiGet(); if (g && g.ok) { data = g.data || {}; saveCache(); return true; } } catch(e) {}
+    try { const g = await apiGet(); if (g && g.ok) { serverData = g.data || {}; saveCache(); recompute(); return true; } } catch(e) {}
     return false;
   }
 
@@ -368,8 +397,9 @@
     try {
       const r = await apiGet();
       if (r && r.ok) {
-        data = r.data || {};
+        serverData = r.data || {};
         saveCache();
+        recompute();
         render();
         setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
       } else { throw new Error("bad response"); }
@@ -402,7 +432,7 @@
       if (names.length >= MAX_PER_DAY) cell.classList.add("full");
       const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
       if (isToday) cell.classList.add("today");
-      const chips = names.map(n => `<span class="chip">${escapeHtml(nameOf(n))}</span>`).join("");
+      const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
       const badgeClass = names.length >= MAX_PER_DAY ? "count-badge full" : "count-badge";
       const badge = names.length > 0 ? `<span class="${badgeClass}">${names.length}/3</span>` : "";
       cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
@@ -438,12 +468,12 @@
       nameList.innerHTML = `<div class="empty-note">ยังไม่มีใครลงหยุดวันนี้</div>`;
     } else {
       names.forEach((n, i) => {
-        const nm = nameOf(n), ts = fmtTime(tsOf(n));
+        const nm = nameOf(n), pend = pendingOf(n), ts = pend ? "⏳ กำลังบันทึก..." : fmtTime(tsOf(n));
         const item = document.createElement("div");
-        item.className = "list-item";
+        item.className = "list-item" + (pend ? " item-pending" : "");
         item.innerHTML = `<div class="li-info"><span class="li-name">${i+1}. ${escapeHtml(nm)}</span>` +
-          (ts ? `<span class="li-time">🕒 ${ts}</span>` : "") + `</div>`;
-        if (isAdminMode) {   // ลบได้เฉพาะแอดมินเท่านั้น
+          (ts ? `<span class="li-time">${pend ? "" : "🕒 "}${escapeHtml(ts)}</span>` : "") + `</div>`;
+        if (isAdminMode && !pend) {   // ลบได้เฉพาะแอดมิน (และรายการที่บันทึกแล้วเท่านั้น)
           const del = document.createElement("button");
           del.className = "danger"; del.textContent = "ลบ";
           del.addEventListener("click", () => removeName(nm));
@@ -465,62 +495,74 @@
     }
     warn.className = show ? cls : "warn";
     warn.innerHTML = show ? html : "";
-    nameInput.disabled = busy || (full && !isAdminMode);
-    addBtn.disabled = busy || (full && !isAdminMode);
+    nameInput.disabled = (full && !isAdminMode);
+    addBtn.disabled = (full && !isAdminMode);
   }
+
+  // อัปเดตหน้าจอทันที (ใช้หลังแก้ pendingOps / serverData)
+  function refreshView() { recompute(); renderModal(); render(); }
 
   async function addName() {
     const name = nameInput.value.trim();
-    if (!name || busy) return;
+    if (!name) return;
     const names = data[selectedKey] || [];
     if (names.length >= MAX_PER_DAY && !isAdminMode) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
     if (!apiUrl) { // โหมดเครื่องเดียว
-      names.push({ name, ts: new Date().toISOString() }); data[selectedKey] = names; saveCache();
-      nameInput.value=""; renderModal(); render(); nameInput.focus(); return;
+      if (!serverData[selectedKey]) serverData[selectedKey] = [];
+      serverData[selectedKey].push({ name, ts: new Date().toISOString() }); saveCache();
+      refreshView(); nameInput.value=""; nameInput.focus(); return;
     }
-    // โหมดออนไลน์: บันทึกขึ้น Google Sheet (เซิร์ฟเวอร์เช็คโควตาอีกชั้น)
-    busy = true; addBtn.textContent = "..."; renderModal();
+
+    // ---- อัปเดตทันที: โชว์ชื่อเลย แล้วค่อยส่งไปบันทึกเบื้องหลัง ----
+    const op = { id: ++opSeq, type:"add", date: selectedKey, name, ts: new Date().toISOString() };
+    pendingOps.push(op);
+    refreshView(); nameInput.value=""; nameInput.focus();
+
+    const payload = { action:"add", date: op.date, name: op.name };
+    if (isAdminMode) { payload.key = adminKey; payload.force = true; } // แอดมินเพิ่มเกิน 3 ได้
     try {
-      const payload = { action:"add", date:selectedKey, name };
-      if (isAdminMode) { payload.key = adminKey; payload.force = true; } // แอดมินเพิ่มเกิน 3 ได้
       const r = await apiPost(payload);
-      if (r && r.data) { data = r.data; saveCache(); }
+      if (r && r.data) { serverData = r.data; saveCache(); }
       if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
       else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
       else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
-      else nameInput.value = "";
     } catch(e) {
-      // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect/CORS) — ดึงข้อมูลมายืนยัน
-      const okRefresh = await reconcile();
-      if (okRefresh) { if ((data[selectedKey]||[]).some(n=>nameOf(n).toLowerCase()===name.toLowerCase())) nameInput.value=""; toast("ซิงก์ข้อมูลแล้ว"); }
-      else toast("📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อลงชื่อ");
+      // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect) — ดึงข้อมูลมายืนยัน
+      const ok = await reconcile();
+      const saved = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
+      if (!saved) toast(ok ? "บันทึกไม่สำเร็จ ลองใหม่" : "📴 ต่อเน็ตไม่ได้ — ชื่อยังไม่ถูกบันทึก");
     } finally {
-      busy = false; addBtn.textContent = "เพิ่ม"; renderModal(); render();
-      if (!nameInput.disabled) nameInput.focus();
+      dropOp(op.id); refreshView();
     }
   }
 
   async function removeName(name) {
-    if (busy) return;
     if (!isAdminMode) { toast("เฉพาะแอดมินเท่านั้นที่ลบได้"); return; }
-    if (!apiUrl) {
-      let names = (data[selectedKey]||[]).filter(n => nameOf(n) !== name);
-      if (names.length === 0) delete data[selectedKey]; else data[selectedKey] = names;
-      saveCache(); renderModal(); render(); return;
+
+    if (!apiUrl) { // โหมดเครื่องเดียว
+      serverData[selectedKey] = (serverData[selectedKey]||[]).filter(n => nameOf(n) !== name);
+      if (serverData[selectedKey].length === 0) delete serverData[selectedKey];
+      saveCache(); refreshView(); return;
     }
-    busy = true; renderModal();
+
+    // ---- อัปเดตทันที: เอาชื่อออกเลย แล้วค่อยยืนยันกับเซิร์ฟเวอร์ ----
+    const op = { id: ++opSeq, type:"remove", date: selectedKey, name };
+    pendingOps.push(op);
+    refreshView();
+
     try {
-      const r = await apiPost({ action:"remove", date:selectedKey, name, key: adminKey });
-      if (r && r.data) { data = r.data; saveCache(); }
+      const r = await apiPost({ action:"remove", date: op.date, name: op.name, key: adminKey });
+      if (r && r.data) { serverData = r.data; saveCache(); }
       if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
       else if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
     } catch(e) {
-      const okRefresh = await reconcile();
-      toast(okRefresh ? "ซิงก์ข้อมูลแล้ว" : "📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อแก้ไข");
+      const ok = await reconcile();
+      const stillThere = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
+      if (stillThere || !ok) toast(ok ? "ลบไม่สำเร็จ ลองใหม่" : "📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อแก้ไข");
     } finally {
-      busy = false; renderModal(); render();
+      dropOp(op.id); refreshView();
     }
   }
 
@@ -611,6 +653,7 @@
   window.addEventListener("offline", () => setStatus("offline","ออฟไลน์ · แสดงข้อมูลล่าสุด (แก้ไขต้องต่อเน็ต)", true));
 
   /* ---------- เริ่มทำงาน ---------- */
+  recompute();
   render();
   syncFromServer();
 

@@ -692,7 +692,24 @@
   }
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    // เจอเวอร์ชันใหม่ (service worker ใหม่เข้าคุม) → รีเฟรชเองอัตโนมัติ ไม่ต้องติดตั้งใหม่
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return; refreshing = true;
+      if (hadController) location.reload();
+    });
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        reg.update();
+        setInterval(() => reg.update(), 30 * 60 * 1000);   // เช็คอัปเดตทุก 30 นาที
+      }).catch(()=>{});
+    });
+    // กลับมาเปิดแอปอีกครั้ง → เช็คอัปเดตทันที
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible")
+        navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(()=>{});
+    });
   }
 </script>
 </body>

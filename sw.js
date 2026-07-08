@@ -1,5 +1,5 @@
-/* Service Worker — ทำให้เปิดออฟไลน์ได้ (เก็บหน้าเว็บไว้ในเครื่อง) */
-const CACHE = "leave-cal-v9";
+/* Service Worker — ออนไลน์ = โหลดของล่าสุดเสมอ, ออฟไลน์ = ใช้ของที่เก็บไว้ */
+const CACHE = "leave-cal-v10";
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,22 +26,33 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
+  const req = e.request;
+  const url = new URL(req.url);
 
-  // ข้อมูลจาก Google (Apps Script) ให้วิ่งเน็ตตรง ไม่ cache
-  if (url.hostname.includes("google.com") || url.hostname.includes("googleusercontent.com")) {
+  // ข้อมูลจาก Google (Apps Script) ให้วิ่งเน็ตตรง ไม่ยุ่ง
+  if (url.hostname.includes("google.com") || url.hostname.includes("googleusercontent.com")) return;
+
+  const isDoc = req.mode === "navigate" || req.destination === "document" || url.pathname.endsWith(".html");
+
+  if (isDoc) {
+    // หน้าเว็บ = network-first: ออนไลน์เอาของล่าสุดเสมอ, เน็ตหลุดค่อยใช้ของเก่า
+    e.respondWith(
+      fetch(req)
+        .then((resp) => {
+          caches.open(CACHE).then((c) => c.put("./index.html", resp.clone()));
+          return resp;
+        })
+        .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+    );
     return;
   }
 
-  // ไฟล์หน้าเว็บ: ใช้ cache ก่อน (เปิดเร็ว + ออฟไลน์ได้) แล้วค่อยอัปเดตเบื้องหลัง
+  // ไฟล์อื่น (ไอคอน/manifest) = ใช้ของที่เก็บไว้ก่อนแล้วอัปเดตเบื้องหลัง
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const fresh = fetch(e.request)
-        .then((resp) => {
-          caches.open(CACHE).then((c) => c.put(e.request, resp.clone()));
-          return resp;
-        })
-        .catch(() => cached || caches.match("./index.html"));
+    caches.match(req).then((cached) => {
+      const fresh = fetch(req)
+        .then((resp) => { caches.open(CACHE).then((c) => c.put(req, resp.clone())); return resp; })
+        .catch(() => cached);
       return cached || fresh;
     })
   );

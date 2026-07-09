@@ -125,6 +125,9 @@
     background: var(--ok); color: #fff; border-radius: 20px; padding: 1px 6px;
   }
   .count-badge.full { background: var(--full); }
+  .count-badge.blocked { background: #64748b; }
+  .day.blocked { background: repeating-linear-gradient(45deg, #f0f2f7, #f0f2f7 8px, #e6e9f0 8px, #e6e9f0 16px); }
+  .day.blocked .num { color: #64748b; }
 
   /* Modal */
   .overlay {
@@ -249,6 +252,7 @@
       <button class="primary" id="addBtn">เพิ่ม</button>
     </div>
     <div class="list" id="nameList"></div>
+    <button id="blockBtn" style="display:none; width:100%; margin-top:6px;"></button>
     <div class="modal-foot">
       <button class="ghost" id="closeBtn">ปิด</button>
     </div>
@@ -309,6 +313,7 @@
   const STORAGE_KEY = "shop_leave_calendar";   // cache ข้อมูลตาราง
   const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
   const ADMIN_LS = "shop_leave_adminkey";      // เก็บรหัสแอดมินในเครื่องหัวหน้า
+  const BLOCK_KEY = "shop_leave_blocked";      // cache วันห้ามหยุด
   const MAX_PER_DAY = 3;
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
@@ -319,7 +324,8 @@
   let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
   let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
   let adminKey = localStorage.getItem(ADMIN_LS) || "";
-  let isAdminMode = !!adminKey;   // ใช้เฉพาะปลดล็อก "เพิ่มเกิน 3 คน"
+  let isAdminMode = !!adminKey;   // ใช้เฉพาะปลดล็อก "เพิ่มเกิน 3 คน / ตั้งวันห้ามหยุด"
+  let blockedSet = new Set(loadBlocked());   // วันห้ามหยุด (YYYY-MM-DD)
   let viewYear, viewMonth, selectedKey = null;
 
   const today = new Date();
@@ -332,6 +338,8 @@
     catch { return {}; }
   }
   function saveCache() { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverData)); }
+  function loadBlocked() { try { return JSON.parse(localStorage.getItem(BLOCK_KEY)) || []; } catch { return []; } }
+  function saveBlocked() { localStorage.setItem(BLOCK_KEY, JSON.stringify([...blockedSet])); }
   function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
 
   /* ---------- รวม server + รายการ pending เป็นข้อมูลที่แสดง ---------- */
@@ -400,7 +408,7 @@
 
   // ดึงข้อมูลล่าสุดมายืนยันสถานะ (คืน true ถ้าสำเร็จ)
   async function reconcile() {
-    try { const g = await apiGet(); if (g && g.ok) { serverData = g.data || {}; saveCache(); recompute(); return true; } } catch(e) {}
+    try { const g = await apiGet(); if (g && g.ok) { serverData = g.data || {}; blockedSet = new Set(g.blocked || []); saveCache(); saveBlocked(); recompute(); return true; } } catch(e) {}
     return false;
   }
 
@@ -411,7 +419,8 @@
       const r = await apiGet();
       if (r && r.ok) {
         serverData = r.data || {};
-        saveCache();
+        blockedSet = new Set(r.blocked || []);
+        saveCache(); saveBlocked();
         recompute();
         render();
         setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
@@ -440,14 +449,17 @@
     for (let d = 1; d <= daysInMonth; d++) {
       const key = keyOf(viewYear, viewMonth, d);
       const names = data[key] || [];
+      const isBlocked = blockedSet.has(key);
       const cell = document.createElement("div");
       cell.className = "day";
-      if (names.length >= MAX_PER_DAY) cell.classList.add("full");
+      if (isBlocked) cell.classList.add("blocked");
+      else if (names.length >= MAX_PER_DAY) cell.classList.add("full");
       const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
       if (isToday) cell.classList.add("today");
       const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
-      const badgeClass = names.length >= MAX_PER_DAY ? "count-badge full" : "count-badge";
-      const badge = names.length > 0 ? `<span class="${badgeClass}">${names.length}/3</span>` : "";
+      let badge = "";
+      if (isBlocked) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
+      else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/3</span>`;
       cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
       cell.addEventListener("click", () => openModal(key));
       daysEl.appendChild(cell);
@@ -495,8 +507,12 @@
         nameList.appendChild(item);
       });
     }
+    const isBlocked = blockedSet.has(selectedKey);
     const full = names.length >= MAX_PER_DAY;
-    if (full && isAdminMode) {
+    if (isBlocked) {
+      warn.className = "warn show";
+      warn.innerHTML = "🚫 วันนี้เป็น <b>วันห้ามหยุด</b> — ลงชื่อไม่ได้";
+    } else if (full && isAdminMode) {
       warn.className = "warn show warn-info";
       warn.innerHTML = "👑 ครบ 3 คนแล้ว — โหมดแอดมินเพิ่มเกินได้";
     } else if (full) {
@@ -506,8 +522,19 @@
       warn.className = "warn";
       warn.innerHTML = "";
     }
-    nameInput.disabled = full && !isAdminMode;
-    addBtn.disabled = full && !isAdminMode;
+    // ห้ามหยุด = ลงไม่ได้ทุกคน / เต็ม = ลงไม่ได้ยกเว้นแอดมิน
+    nameInput.disabled = isBlocked || (full && !isAdminMode);
+    addBtn.disabled = isBlocked || (full && !isAdminMode);
+
+    // ปุ่มตั้ง/ยกเลิกวันห้ามหยุด (เฉพาะแอดมิน)
+    const blockBtn = document.getElementById("blockBtn");
+    if (isAdminMode) {
+      blockBtn.style.display = "block";
+      blockBtn.className = isBlocked ? "primary" : "danger";
+      blockBtn.textContent = isBlocked ? "✅ ยกเลิกวันห้ามหยุด" : "🚫 ตั้งเป็นวันห้ามหยุด";
+    } else {
+      blockBtn.style.display = "none";
+    }
   }
 
   // อัปเดตหน้าจอทันที (ใช้หลังแก้ pendingOps / serverData)
@@ -516,6 +543,7 @@
   async function addName() {
     const name = nameInput.value.trim();
     if (!name) return;
+    if (blockedSet.has(selectedKey)) { toast("🚫 วันนี้เป็นวันห้ามหยุด"); return; }
     const names = data[selectedKey] || [];
     if (names.length >= MAX_PER_DAY && !isAdminMode) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
@@ -536,8 +564,10 @@
     try {
       const r = await apiPost(payload);
       if (r && r.data) { serverData = r.data; saveCache(); }
+      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
       if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
       else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
+      else if (!r.ok && r.error === "blocked") toast("🚫 วันนี้เป็นวันห้ามหยุด");
       else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
     } catch(e) {
       // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect) — ดึงข้อมูลมายืนยัน
@@ -564,6 +594,7 @@
     try {
       const r = await apiPost({ action:"remove", date: op.date, name: op.name });
       if (r && r.data) { serverData = r.data; saveCache(); }
+      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
       if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
     } catch(e) {
       const ok = await reconcile();
@@ -573,6 +604,28 @@
       dropOp(op.id); refreshView();
     }
   }
+
+  // ตั้ง/ยกเลิก วันห้ามหยุด (เฉพาะแอดมิน)
+  async function toggleBlock() {
+    if (!isAdminMode || !selectedKey) return;
+    const key = selectedKey;
+    const willBlock = !blockedSet.has(key);
+    if (willBlock) blockedSet.add(key); else blockedSet.delete(key);   // อัปเดตทันที
+    saveBlocked(); refreshView();
+    if (!apiUrl) return;   // โหมดเครื่องเดียว
+    try {
+      const r = await apiPost({ action: willBlock ? "block" : "unblock", date: key, key: adminKey });
+      if (r && r.data) { serverData = r.data; saveCache(); }
+      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
+      if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
+      else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
+      else toast(willBlock ? "🚫 ตั้งเป็นวันห้ามหยุดแล้ว" : "✅ ยกเลิกวันห้ามหยุดแล้ว");
+    } catch(e) {
+      await reconcile();   // ดึงสถานะจริงมายืนยัน
+      toast("📴 ต่อเน็ตไม่ได้ ลองใหม่");
+    } finally { refreshView(); }
+  }
+  document.getElementById("blockBtn").addEventListener("click", toggleBlock);
 
   function closeModal() { overlay.classList.remove("show"); selectedKey = null; }
 

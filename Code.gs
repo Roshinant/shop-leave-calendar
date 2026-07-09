@@ -78,6 +78,44 @@ function namesForDate(sh, date) {
   return names;
 }
 
+/* ---------- วันห้ามหยุด (Blocked) ---------- */
+var BLOCK_SHEET = 'Blocked';
+function getBlockedSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(BLOCK_SHEET);
+  if (!sh) { sh = ss.insertSheet(BLOCK_SHEET); sh.appendRow(['date']); }
+  sh.getRange('A2:A').setNumberFormat('@');
+  return sh;
+}
+function readBlocked() {
+  var sh = getBlockedSheet();
+  var rows = sh.getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    var d = normDate(rows[i][0]);
+    if (d && out.indexOf(d) < 0) out.push(d);
+  }
+  return out;
+}
+function isBlockedDate(date) { return readBlocked().indexOf(date) >= 0; }
+function addBlocked(date) {
+  var sh = getBlockedSheet();
+  if (!isBlockedDate(date)) {
+    sh.appendRow([date]);
+    var r = sh.getLastRow();
+    sh.getRange(r, 1).setNumberFormat('@').setValue(date);
+  }
+}
+function removeBlocked(date) {
+  var sh = getBlockedSheet();
+  var rows = sh.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (normDate(rows[i][0]) === date) sh.deleteRow(i + 1);
+  }
+}
+/** ตอบกลับพร้อมข้อมูลตาราง + วันห้ามหยุด */
+function resp(obj) { obj.data = readAll(); obj.blocked = readBlocked(); return json(obj); }
+
 /** GET: ส่งข้อมูลทั้งหมดกลับไป (?debug=1 เพื่อดูชนิดค่าจริงในแถวล่าสุด) */
 function doGet(e) {
   if (e && e.parameter && e.parameter.debug) {
@@ -91,7 +129,7 @@ function doGet(e) {
       types: last.map(function (x) { return (x && typeof x.getTime === 'function') ? 'Date' : typeof x; })
     });
   }
-  return json({ ok: true, data: readAll() });
+  return resp({ ok: true });
 }
 
 /** POST: เพิ่ม/ลบชื่อ (เช็คโควตา 3 คน/วัน ที่ฝั่งเซิร์ฟเวอร์) */
@@ -105,26 +143,37 @@ function doPost(e) {
     var name = String(req.name || '').trim();
     var sh = getSheet();
 
-    // ตรวจรหัสแอดมิน (ให้หน้าเว็บรู้ว่าปลดล็อก "เพิ่มเกิน 3" ได้ไหม)
+    var admin = isAdmin(req.key);
+
+    // ตรวจรหัสแอดมิน (ให้หน้าเว็บรู้ว่าปลดล็อก "เพิ่มเกิน 3 / ตั้งวันห้ามหยุด" ได้ไหม)
     if (action === 'auth') {
-      return json({ ok: true, admin: isAdmin(req.key) });
+      return json({ ok: true, admin: admin });
+    }
+
+    // ตั้ง/ยกเลิก วันห้ามหยุด (เฉพาะแอดมิน)
+    if (action === 'block' || action === 'unblock') {
+      if (!admin) return resp({ ok: false, error: 'forbidden' });
+      if (!date) return resp({ ok: false, error: 'invalid' });
+      if (action === 'block') addBlocked(date); else removeBlocked(date);
+      return resp({ ok: true });
     }
 
     if (action === 'add') {
-      if (!date || !name) return json({ ok: false, error: 'invalid', data: readAll() });
+      if (!date || !name) return resp({ ok: false, error: 'invalid' });
+      if (isBlockedDate(date)) return resp({ ok: false, error: 'blocked' });  // วันห้ามหยุด ลงไม่ได้
       var current = namesForDate(sh, date);
-      var force = req.force && isAdmin(req.key);   // แอดมินเท่านั้นที่เพิ่มเกิน 3 คนได้
+      var force = req.force && admin;   // แอดมินเท่านั้นที่เพิ่มเกิน 3 คนได้
       if (!force && current.length >= MAX_PER_DAY) {
-        return json({ ok: false, error: 'full', data: readAll() });
+        return resp({ ok: false, error: 'full' });
       }
       var dup = current.some(function (n) { return n.toLowerCase() === name.toLowerCase(); });
-      if (dup) return json({ ok: false, error: 'duplicate', data: readAll() });
+      if (dup) return resp({ ok: false, error: 'duplicate' });
       // เขียนแถวใหม่ แล้วบังคับช่องวันที่ให้เป็น "ข้อความ" ชัดเจน
       // (กันทั้งการแปลงเป็นวันที่ และปัญหาโซนเวลา)
       sh.appendRow([date, name, new Date()]);
       var r = sh.getLastRow();
       sh.getRange(r, 1).setNumberFormat('@').setValue(date);
-      return json({ ok: true, data: readAll() });
+      return resp({ ok: true });
     }
 
     if (action === 'remove') {
@@ -137,10 +186,10 @@ function doPost(e) {
           break;
         }
       }
-      return json({ ok: true, data: readAll() });
+      return resp({ ok: true });
     }
 
-    return json({ ok: false, error: 'unknown_action', data: readAll() });
+    return resp({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
   } finally {

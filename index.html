@@ -301,6 +301,18 @@
     </div>
 </div>
 
+<!-- Modal: แจ้งเตือนวันหยุดวันนี้ -->
+<div class="overlay" id="notifyOverlay">
+  <div class="modal">
+    <h2>📢 แจ้งเตือนวันหยุด</h2>
+    <p class="sub" id="notifyDate"></p>
+    <div class="list" id="notifyList"></div>
+    <div class="modal-foot">
+      <button class="primary" id="notifyCloseBtn">รับทราบ</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -425,10 +437,12 @@
         recompute();
         render();
         setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
+        maybeNotifyToday();
       } else { throw new Error("bad response"); }
     } catch (e) {
       render();
       setStatus("offline", "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (แก้ไขต้องต่อเน็ต)", true);
+      maybeNotifyToday();
     }
   }
 
@@ -710,6 +724,25 @@
   document.getElementById("summary-btn").addEventListener("click", openSummary);
   document.getElementById("sumCloseBtn").addEventListener("click", () => sumOverlay.classList.remove("show"));
   sumOverlay.addEventListener("click", e => { if (e.target === sumOverlay) sumOverlay.classList.remove("show"); });
+
+  /* ---------- ป็อปอัพแจ้งเตือน "วันนี้ใครหยุด" (เด้งตอนเปิดแอป วันละครั้ง) ---------- */
+  const NOTIFY_KEY = "shop_leave_notified";
+  const notifyOverlay = document.getElementById("notifyOverlay");
+  function maybeNotifyToday() {
+    const tKey = keyOf(today.getFullYear(), today.getMonth(), today.getDate());
+    if (blockedSet.has(tKey)) return;
+    const names = (data[tKey] || []).map(nameOf);
+    if (names.length === 0) return;
+    if (localStorage.getItem(NOTIFY_KEY) === tKey) return;   // แจ้งไปแล้ววันนี้
+    localStorage.setItem(NOTIFY_KEY, tKey);
+    document.getElementById("notifyDate").textContent =
+      `วันนี้ ${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear() + 543} · มีคนหยุด ${names.length} คน`;
+    document.getElementById("notifyList").innerHTML =
+      names.map((n, i) => `<div class="list-item"><span class="li-name">${i+1}. ${escapeHtml(n)}</span></div>`).join("");
+    notifyOverlay.classList.add("show");
+  }
+  document.getElementById("notifyCloseBtn").addEventListener("click", () => notifyOverlay.classList.remove("show"));
+  notifyOverlay.addEventListener("click", e => { if (e.target === notifyOverlay) notifyOverlay.classList.remove("show"); });
 
   /* ---------- Toast ---------- */
   let toastTimer;

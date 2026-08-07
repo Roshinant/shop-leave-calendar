@@ -93,12 +93,10 @@
 
   .calendar {
     background: var(--card); border: 1px solid var(--line);
-    border-radius: 16px; box-shadow: var(--shadow);
-    overflow: auto; max-height: 74vh; -webkit-overflow-scrolling: touch;
+    border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
   }
-  /* แต่ละคอลัมน์กว้างอย่างน้อย 120px ถ้ารวมแล้วเกินจอ = เลื่อนซ้าย-ขวาได้ */
-  .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); }
-  .weekdays { position: sticky; top: 0; z-index: 3; }
+  /* ย่อให้พอดีจอ เห็นครบทั้ง 7 วัน (อา-ส) ไม่ต้องเลื่อนซ้าย-ขวา */
+  .weekdays, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
   .weekdays div {
     text-align: center; padding: 11px 2px; font-weight: 700; font-size: .8rem;
     color: var(--muted); background: #fafbfe; border-bottom: 1px solid var(--line);
@@ -199,9 +197,12 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   @media (max-width: 560px) {
-    .day { min-height: 72px; padding: 5px; }
-    .chip { font-size: .72rem; padding: 2px 7px; }
-    .day .num { font-size: .82rem; }
+    .day { min-height: 62px; padding: 3px; gap: 2px; }
+    .chip { font-size: .58rem; padding: 1px 5px; }
+    .day .num { font-size: .76rem; }
+    .weekdays div { font-size: .7rem; padding: 8px 1px; }
+    .count-badge { font-size: .58rem; padding: 0 4px; top: 4px; right: 4px; }
+    .names { gap: 2px; }
     .month-title { order: -1; width: 100%; margin-bottom: 4px; }
   }
 </style>

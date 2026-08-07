@@ -155,6 +155,7 @@
   }
   .field input:focus { border-color: var(--primary); }
   .list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  #nameList, #sumList { max-height: 45vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .list-item {
     display: flex; align-items: center; justify-content: space-between;
     background: #f7f9ff; border-radius: 10px; padding: 10px 12px; font-weight: 600;
@@ -171,6 +172,7 @@
   .warn.warn-info { background: var(--primary-soft); color: var(--primary); }
   .sum-count { flex: none; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .82rem; padding: 3px 12px; border-radius: 20px; }
   .chip.chip-pending { opacity: .55; }
+  .chip.chip-more { background: #e2e8f0; color: #475569; font-weight: 700; }
   .list-item.item-pending { opacity: .6; }
   .list-item.item-pending .li-time { color: var(--primary); }
   .modal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
@@ -471,7 +473,9 @@
       else if (names.length >= MAX_PER_DAY) cell.classList.add("full");
       const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
       if (isToday) cell.classList.add("today");
-      const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
+      const CELL_MAX = 3;   // โชว์ในช่องปฏิทินไม่เกิน 3 ชื่อ กันล้น (กดดูครบในหน้าต่างวันได้)
+      let chips = names.slice(0, CELL_MAX).map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
+      if (names.length > CELL_MAX) chips += `<span class="chip chip-more">+${names.length - CELL_MAX} คน</span>`;
       let badge = "";
       if (isBlocked) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
       else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/3</span>`;

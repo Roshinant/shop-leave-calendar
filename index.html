@@ -93,9 +93,12 @@
 
   .calendar {
     background: var(--card); border: 1px solid var(--line);
-    border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+    border-radius: 16px; box-shadow: var(--shadow);
+    overflow: auto; max-height: 74vh; -webkit-overflow-scrolling: touch;
   }
-  .weekdays, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  /* แต่ละคอลัมน์กว้างอย่างน้อย 120px ถ้ารวมแล้วเกินจอ = เลื่อนซ้าย-ขวาได้ */
+  .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); }
+  .weekdays { position: sticky; top: 0; z-index: 3; }
   .weekdays div {
     text-align: center; padding: 11px 2px; font-weight: 700; font-size: .8rem;
     color: var(--muted); background: #fafbfe; border-bottom: 1px solid var(--line);
@@ -172,7 +175,6 @@
   .warn.warn-info { background: var(--primary-soft); color: var(--primary); }
   .sum-count { flex: none; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .82rem; padding: 3px 12px; border-radius: 20px; }
   .chip.chip-pending { opacity: .55; }
-  .chip.chip-more { background: #e2e8f0; color: #475569; font-weight: 700; }
   .list-item.item-pending { opacity: .6; }
   .list-item.item-pending .li-time { color: var(--primary); }
   .modal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
@@ -198,7 +200,7 @@
 
   @media (max-width: 560px) {
     .day { min-height: 72px; padding: 5px; }
-    .chip { font-size: .63rem; padding: 1px 6px; }
+    .chip { font-size: .72rem; padding: 2px 7px; }
     .day .num { font-size: .82rem; }
     .month-title { order: -1; width: 100%; margin-bottom: 4px; }
   }
@@ -473,9 +475,7 @@
       else if (names.length >= MAX_PER_DAY) cell.classList.add("full");
       const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
       if (isToday) cell.classList.add("today");
-      const CELL_MAX = 3;   // โชว์ในช่องปฏิทินไม่เกิน 3 ชื่อ กันล้น (กดดูครบในหน้าต่างวันได้)
-      let chips = names.slice(0, CELL_MAX).map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
-      if (names.length > CELL_MAX) chips += `<span class="chip chip-more">+${names.length - CELL_MAX} คน</span>`;
+      const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
       let badge = "";
       if (isBlocked) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
       else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/3</span>`;

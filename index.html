@@ -38,7 +38,12 @@
     color: var(--text);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 920px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 14px 60px; }
+  .wrap {
+    max-width: 920px; margin: 0 auto;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    min-height: 100vh; min-height: 100dvh;   /* dvh = รองรับแถบเบราว์เซอร์ทั้ง iOS/Android */
+    display: flex; flex-direction: column;
+  }
   header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   header .brand-logo {
     height: 58px; width: 58px; flex: none; object-fit: contain; background: #fff;
@@ -94,17 +99,20 @@
   .calendar {
     background: var(--card); border: 1px solid var(--line);
     border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+    flex: 1; min-height: 0; display: flex; flex-direction: column;   /* ยืดเต็มจอที่เหลือ */
   }
   /* ย่อให้พอดีจอ เห็นครบทั้ง 7 วัน (อา-ส) ไม่ต้องเลื่อนซ้าย-ขวา */
   .weekdays, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  /* แถวสัปดาห์แบ่งความสูงเท่าๆ กัน เต็มพื้นที่ = เห็นครบทั้งเดือนในจอเดียว */
+  .days { flex: 1; min-height: 0; grid-auto-rows: 1fr; }
   .weekdays div {
     text-align: center; padding: 11px 2px; font-weight: 700; font-size: .8rem;
     color: var(--muted); background: #fafbfe; border-bottom: 1px solid var(--line);
   }
   .day {
-    min-height: 92px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
-    padding: 7px; position: relative; cursor: pointer; transition: background .12s;
-    display: flex; flex-direction: column; gap: 3px;
+    min-height: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 6px; position: relative; cursor: pointer; transition: background .12s;
+    display: flex; flex-direction: column; gap: 3px; overflow: hidden;
   }
   .day:nth-child(7n) { border-right: none; }
   .day.empty { background: #fbfcfe; cursor: default; }
@@ -115,7 +123,8 @@
     border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   }
   .day.full { background: var(--full-soft); }
-  .names { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+  .names { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .names::-webkit-scrollbar { width: 0; }   /* ซ่อนสcrollbar ในช่องให้ดูสะอาด */
   .chip {
     font-size: .7rem; background: var(--primary-soft); color: var(--primary);
     padding: 2px 7px; border-radius: 20px; white-space: nowrap; overflow: hidden;
@@ -197,11 +206,11 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   @media (max-width: 560px) {
-    .day { min-height: 62px; padding: 3px; gap: 2px; }
+    .day { min-height: 0; padding: 3px; gap: 2px; }
     .chip { font-size: .58rem; padding: 1px 5px; }
     .day .num { font-size: .76rem; }
-    .weekdays div { font-size: .7rem; padding: 8px 1px; }
-    .count-badge { font-size: .58rem; padding: 0 4px; top: 4px; right: 4px; }
+    .weekdays div { font-size: .7rem; padding: 7px 1px; }
+    .count-badge { font-size: .56rem; padding: 0 4px; top: 4px; right: 4px; }
     .names { gap: 2px; }
     .month-title { order: -1; width: 100%; margin-bottom: 4px; }
   }

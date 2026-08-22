@@ -222,7 +222,7 @@
     <img src="logo/logo.jpg" alt="โลตัสมือถือ" class="brand-logo">
     <div>
       <h1>หยุดงาน โลตัสมือถือ</h1>
-      <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 3 คน</p>
+      <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 4 คน</p>
     </div>
   </header>
 
@@ -243,7 +243,7 @@
 
   <div class="legend">
     <span><i class="dot" style="background:var(--ok)"></i> ยังลงได้</span>
-    <span><i class="dot" style="background:var(--full)"></i> เต็มแล้ว (3 คน)</span>
+    <span><i class="dot" style="background:var(--full)"></i> เต็มแล้ว (4 คน)</span>
     <span><i class="dot" style="background:var(--primary)"></i> วันนี้</span>
   </div>
 
@@ -260,8 +260,8 @@
   <div class="modal">
     <h2 id="modalDate">วันที่</h2>
     <p class="sub">ลงชื่อคนที่จะหยุดในวันนี้</p>
-    <div class="slots">ลงแล้ว <b id="slotUsed">0</b> / 3 คน · เหลือ <b id="slotLeft">3</b> ที่</div>
-    <div class="warn" id="warn">🚫 วันนี้มีคนลงครบ 3 คนแล้ว ลงเพิ่มไม่ได้</div>
+    <div class="slots">ลงแล้ว <b id="slotUsed">0</b> / 4 คน · เหลือ <b id="slotLeft">4</b> ที่</div>
+    <div class="warn" id="warn">🚫 วันนี้มีคนลงครบ 4 คนแล้ว ลงเพิ่มไม่ได้</div>
     <div class="field">
       <input type="text" id="nameInput" placeholder="พิมพ์ชื่อคนที่จะหยุด..." maxlength="30" autocomplete="off">
       <button class="primary" id="addBtn">เพิ่ม</button>
@@ -290,8 +290,8 @@
     <hr style="border:none; border-top:1px solid var(--line); margin:18px 0;">
 
     <div class="set-label">👑 โหมดแอดมิน (สำหรับหัวหน้า)</div>
-    <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อก <b>เพิ่มคนเกิน 3 คน/วัน</b> ในวันที่ต้องการ<br>
-      พนักงานทั่วไปไม่ต้องกรอก (เพิ่ม/ลบได้ตามปกติ แต่เพิ่มได้ไม่เกิน 3)</p>
+    <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อก <b>ลบชื่อ</b> · <b>เพิ่มเกิน 4 คน/วัน</b> · <b>ตั้งวันห้ามหยุด</b><br>
+      พนักงานทั่วไปเพิ่มได้อย่างเดียว (ไม่เกิน 4) · ลบไม่ได้ ต้องแจ้งแอดมิน</p>
     <div class="field" id="adminField">
       <input type="password" id="adminInput" placeholder="รหัสแอดมิน..." autocomplete="off">
       <button class="primary" id="adminBtn">เข้าโหมดแอดมิน</button>
@@ -341,7 +341,7 @@
   const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
   const ADMIN_LS = "shop_leave_adminkey";      // เก็บรหัสแอดมินในเครื่องหัวหน้า
   const BLOCK_KEY = "shop_leave_blocked";      // cache วันห้ามหยุด
-  const MAX_PER_DAY = 3;
+  const MAX_PER_DAY = 4;
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 
@@ -351,7 +351,7 @@
   let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
   let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
   let adminKey = localStorage.getItem(ADMIN_LS) || "";
-  let isAdminMode = !!adminKey;   // ใช้เฉพาะปลดล็อก "เพิ่มเกิน 3 คน / ตั้งวันห้ามหยุด"
+  let isAdminMode = !!adminKey;   // ปลดล็อก: ลบชื่อ / เพิ่มเกิน 4 คน / ตั้งวันห้ามหยุด
   let blockedSet = new Set(loadBlocked());   // วันห้ามหยุด (YYYY-MM-DD)
   let viewYear, viewMonth, selectedKey = null;
 
@@ -488,7 +488,7 @@
       const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
       let badge = "";
       if (isBlocked) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
-      else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/3</span>`;
+      else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/${MAX_PER_DAY}</span>`;
       cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
       cell.addEventListener("click", () => openModal(key));
       daysEl.appendChild(cell);
@@ -527,7 +527,7 @@
         item.className = "list-item" + (pend ? " item-pending" : "");
         item.innerHTML = `<div class="li-info"><span class="li-name">${i+1}. ${escapeHtml(nm)}</span>` +
           (ts ? `<span class="li-time">${pend ? "" : "🕒 "}${escapeHtml(ts)}</span>` : "") + `</div>`;
-        if (!pend) {   // ทุกคนลบได้ (เฉพาะรายการที่บันทึกแล้ว)
+        if (!pend && isAdminMode) {   // ลบได้เฉพาะแอดมิน
           const del = document.createElement("button");
           del.className = "danger"; del.textContent = "ลบ";
           del.addEventListener("click", () => removeName(nm));
@@ -543,10 +543,13 @@
       warn.innerHTML = "🚫 วันนี้เป็น <b>วันห้ามหยุด</b> — ลงชื่อไม่ได้";
     } else if (full && isAdminMode) {
       warn.className = "warn show warn-info";
-      warn.innerHTML = "👑 ครบ 3 คนแล้ว — โหมดแอดมินเพิ่มเกินได้";
+      warn.innerHTML = `👑 ครบ ${MAX_PER_DAY} คนแล้ว — โหมดแอดมินเพิ่มเกินได้`;
     } else if (full) {
       warn.className = "warn show";
-      warn.innerHTML = "🚫 วันนี้เต็มแล้ว (3 คน) ลงเพิ่มไม่ได้";
+      warn.innerHTML = `🚫 วันนี้เต็มแล้ว (${MAX_PER_DAY} คน) ลงเพิ่มไม่ได้`;
+    } else if (!isAdminMode && names.length > 0) {
+      warn.className = "warn show warn-info";
+      warn.innerHTML = "ℹ️ ต้องการลบชื่อ? แจ้งแอดมิน (ลบได้เฉพาะแอดมิน)";
     } else {
       warn.className = "warn";
       warn.innerHTML = "";
@@ -574,7 +577,7 @@
     if (!name) return;
     if (blockedSet.has(selectedKey)) { toast("🚫 วันนี้เป็นวันห้ามหยุด"); return; }
     const names = data[selectedKey] || [];
-    if (names.length >= MAX_PER_DAY && !isAdminMode) { toast("🚫 วันนี้เต็มแล้ว (3 คน)"); return; }
+    if (names.length >= MAX_PER_DAY && !isAdminMode) { toast(`🚫 วันนี้เต็มแล้ว (${MAX_PER_DAY} คน)`); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
     if (!apiUrl) { // โหมดเครื่องเดียว
@@ -594,7 +597,7 @@
       const r = await apiPost(payload);
       if (r && r.data) { serverData = r.data; saveCache(); }
       if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
-      if (!r.ok && r.error === "full") toast("🚫 วันนี้เต็มแล้ว มีคนลงครบ 3 คน");
+      if (!r.ok && r.error === "full") toast(`🚫 วันนี้เต็มแล้ว มีคนลงครบ ${MAX_PER_DAY} คน`);
       else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
       else if (!r.ok && r.error === "blocked") toast("🚫 วันนี้เป็นวันห้ามหยุด");
       else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
@@ -609,6 +612,7 @@
   }
 
   async function removeName(name) {
+    if (!isAdminMode) { toast("ลบได้เฉพาะแอดมิน — แจ้งแอดมินให้ลบ"); return; }
     if (!apiUrl) { // โหมดเครื่องเดียว
       serverData[selectedKey] = (serverData[selectedKey]||[]).filter(n => nameOf(n) !== name);
       if (serverData[selectedKey].length === 0) delete serverData[selectedKey];
@@ -621,10 +625,11 @@
     refreshView();
 
     try {
-      const r = await apiPost({ action:"remove", date: op.date, name: op.name });
+      const r = await apiPost({ action:"remove", date: op.date, name: op.name, key: adminKey });
       if (r && r.data) { serverData = r.data; saveCache(); }
       if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
-      if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
+      if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
+      else if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
     } catch(e) {
       const ok = await reconcile();
       const stillThere = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
@@ -678,16 +683,16 @@
     syncFromServer();
   });
 
-  /* ---------- Admin (ใช้แค่ปลดล็อกเพิ่มเกิน 3 คน) ---------- */
+  /* ---------- Admin (ปลดล็อก: ลบ / เพิ่มเกิน 4 / วันห้ามหยุด) ---------- */
   function updateAdminUI() {
     if (isAdminMode) {
       adminField.style.display = "none";
       adminExitBtn.style.display = "block";
-      adminHelp.innerHTML = "✅ กำลังอยู่ในโหมดแอดมิน — เพิ่มคนเกิน 3 คน/วันได้";
+      adminHelp.innerHTML = "✅ กำลังอยู่ในโหมดแอดมิน — ลบชื่อได้ · เพิ่มเกิน 4 คน/วันได้ · ตั้งวันห้ามหยุดได้";
     } else {
       adminField.style.display = "flex";
       adminExitBtn.style.display = "none";
-      adminHelp.innerHTML = "ใส่รหัสแอดมินเพื่อปลดล็อก <b>เพิ่มคนเกิน 3 คน/วัน</b> ในวันที่ต้องการ<br>พนักงานทั่วไปไม่ต้องกรอก (เพิ่ม/ลบได้ตามปกติ แต่เพิ่มได้ไม่เกิน 3)";
+      adminHelp.innerHTML = "ใส่รหัสแอดมินเพื่อปลดล็อก <b>ลบชื่อ</b> · <b>เพิ่มเกิน 4 คน/วัน</b> · <b>ตั้งวันห้ามหยุด</b><br>พนักงานทั่วไปเพิ่มได้อย่างเดียว (ไม่เกิน 4) · ลบไม่ได้ ต้องแจ้งแอดมิน";
     }
   }
   async function enterAdmin() {

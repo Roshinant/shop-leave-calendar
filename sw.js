@@ -1,5 +1,5 @@
 /* Service Worker — ออนไลน์ = โหลดของล่าสุดเสมอ, ออฟไลน์ = ใช้ของที่เก็บไว้ */
-const CACHE = "leave-cal-v17";
+const CACHE = "leave-cal-v18";
 const ASSETS = [
   "./",
   "./index.html",

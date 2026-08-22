@@ -5,7 +5,7 @@
  */
 
 var SHEET_NAME = 'Leaves';
-var MAX_PER_DAY = 3;
+var MAX_PER_DAY = 4;
 
 /**
  * ตรวจว่าเป็นแอดมิน (หัวหน้า) ไหม — ใช้เฉพาะตอน "เพิ่มเกิน 3 คน/วัน" เท่านั้น
@@ -177,7 +177,8 @@ function doPost(e) {
     }
 
     if (action === 'remove') {
-      // ทุกคนลบได้
+      // ลบได้เฉพาะแอดมินเท่านั้น
+      if (!admin) return resp({ ok: false, error: 'forbidden' });
       var rows = sh.getDataRange().getValues();
       for (var i = rows.length - 1; i >= 1; i--) {
         if (normDate(rows[i][0]) === date &&

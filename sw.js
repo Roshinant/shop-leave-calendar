@@ -1,5 +1,5 @@
 /* Service Worker — ออนไลน์ = โหลดของล่าสุดเสมอ, ออฟไลน์ = ใช้ของที่เก็บไว้ */
-const CACHE = "leave-cal-v18";
+const CACHE = "leave-cal-v19";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,7 +29,9 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
 
-  // ข้อมูลจาก Google (Apps Script) ให้วิ่งเน็ตตรง ไม่ยุ่ง
+  // ข้อมูลจากเซิร์ฟเวอร์ (Supabase / Google Apps Script) ให้วิ่งเน็ตตรง ไม่ยุ่ง
+  if (req.method !== "GET") return;
+  if (url.hostname.endsWith("supabase.co") || url.hostname.endsWith("supabase.in")) return;
   if (url.hostname.includes("google.com") || url.hostname.includes("googleusercontent.com")) return;
 
   const isDoc = req.mode === "navigate" || req.destination === "document" || url.pathname.endsWith(".html");

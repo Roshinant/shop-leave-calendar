@@ -278,6 +278,7 @@
 <div class="overlay" id="setOverlay">
   <div class="modal">
     <h2>⚙️ ตั้งค่าการเชื่อมต่อ</h2>
+    <div id="apiSection">
     <p class="sub">เชื่อมกับ Google Sheet เพื่อให้ทุกเครื่องเห็นข้อมูลตรงกัน</p>
     <div class="set-label">ลิงก์ Google Apps Script (Web App URL)</div>
     <p class="set-help">วางลิงก์ที่ได้จากการ Deploy Apps Script ที่ลงท้ายด้วย <b>/exec</b><br>
@@ -288,6 +289,7 @@
     </div>
 
     <hr style="border:none; border-top:1px solid var(--line); margin:18px 0;">
+    </div>
 
     <div class="set-label">👑 โหมดแอดมิน (สำหรับหัวหน้า)</div>
     <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อก <b>ลบชื่อ</b> · <b>เพิ่มเกิน 4 คน/วัน</b> · <b>ตั้งวันห้ามหยุด</b><br>
@@ -329,10 +331,16 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
   /* ================== ตั้งค่า ==================
-     👉 เจ้าของร้าน: วางลิงก์ Web App จาก Google Apps Script ตรงนี้ 1 ครั้ง
-        แล้ว "อัป" ให้ทุกคนใช้ ทุกเครื่องจะเชื่อมอัตโนมัติ
+     👉 ฐานข้อมูลหลัก = Supabase (เร็ว + อัปเดตทุกเครื่องทันที)
+        ใส่ Project URL และ anon/publishable key จาก Supabase → Project Settings → API
+        ถ้าเว้นว่าง "" = กลับไปใช้ Google Apps Script ด้านล่างแบบเดิม                */
+  const SUPABASE_URL = "";
+  const SUPABASE_KEY = "";
+
+  /* สำรอง: ลิงก์ Web App จาก Google Apps Script (ใช้เมื่อไม่ได้ตั้ง Supabase)
      ถ้าเว้นว่าง "" = โหมดเครื่องเดียว (เก็บในเครื่อง ไม่แชร์)          */
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwzfRk-x42pNBBguwM_RQoHmh7bQ5klBrRI4pYC9DISY5LwfloAAoYCMA3cYvXwOMUq/exec";
   /* ============================================ */
@@ -422,12 +430,66 @@
   }
   function refreshStatus() { setStatus(lastStatus[0], lastStatus[1], lastStatus[2]); }
 
-  /* ---------- เรียก Google Sheet ---------- */
+  /* ---------- Supabase (คืนค่ารูปแบบเดียวกับ Apps Script: {ok, data, blocked, error, admin}) ---------- */
+  const useSb = !!(SUPABASE_URL && SUPABASE_KEY);
+  const SB_ERRORS = ["full", "duplicate", "blocked", "forbidden", "invalid"];
+  let sbClient = null;
+  function sb() {
+    if (!sbClient) {
+      if (!window.supabase) throw new Error("supabase-js not loaded");   // เปิดตอนออฟไลน์ครั้งแรก
+      sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+    }
+    return sbClient;
+  }
+  function isShared() { return useSb || !!apiUrl; }
+
+  async function sbGet() {
+    const { data, error } = await sb().rpc("get_all");
+    if (error) throw error;
+    return { ok: true, data: data.data, blocked: data.blocked };
+  }
+  async function sbPost(p) {
+    const key = p.key || null;
+    const call = {
+      auth:    ["is_admin",     { p_key: key }],
+      add:     ["add_leave",    { p_date: p.date, p_name: p.name, p_key: key }],
+      remove:  ["remove_leave", { p_date: p.date, p_name: p.name, p_key: key }],
+      block:   ["set_blocked",  { p_date: p.date, p_block: true,  p_key: key }],
+      unblock: ["set_blocked",  { p_date: p.date, p_block: false, p_key: key }],
+    }[p.action];
+    if (!call) return { ok: false, error: "unknown_action" };
+    const { data, error } = await sb().rpc(call[0], call[1]);
+    if (p.action === "auth") { if (error) throw error; return { ok: true, admin: data === true }; }
+    if (error) {
+      if (!SB_ERRORS.includes(error.message)) throw error;   // เน็ต/เซิร์ฟเวอร์มีปัญหา → ให้ไปทาง catch เดิม
+      const r = await sbGet().catch(() => ({}));            // ส่งข้อมูลล่าสุดกลับไปด้วย เหมือน Apps Script
+      return { ...r, ok: false, error: error.message };
+    }
+    return { ok: true, data: data.data, blocked: data.blocked };
+  }
+
+  // มีคนแก้ข้อมูลจากเครื่องอื่น → ดึงใหม่ทันที (รวบหลายเหตุการณ์ติดกันเป็นครั้งเดียว)
+  let rtTimer;
+  function onRemoteChange() {
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(async () => { if (await reconcile()) refreshView(); }, 400);
+  }
+  function startRealtime() {
+    if (!useSb || !window.supabase) return;
+    sb().channel("leave-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leaves" }, onRemoteChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocked" }, onRemoteChange)
+      .subscribe();
+  }
+
+  /* ---------- เรียกเซิร์ฟเวอร์ (Supabase หรือ Google Sheet) ---------- */
   async function apiGet() {
+    if (useSb) return sbGet();
     const res = await fetch(apiUrl, { method: "GET" });
     return res.json();
   }
   async function apiPost(payload) {
+    if (useSb) return sbPost(payload);
     // ส่งเป็น text/plain เพื่อเลี่ยง CORS preflight ของ Apps Script
     const res = await fetch(apiUrl, { method: "POST", body: JSON.stringify(payload) });
     return res.json();
@@ -440,7 +502,7 @@
   }
 
   async function syncFromServer() {
-    if (!apiUrl) { setStatus("local", "โหมดเครื่องเดียว (ยังไม่ได้เชื่อม Google Sheet)"); render(); return; }
+    if (!isShared()) { setStatus("local", "โหมดเครื่องเดียว (ยังไม่ได้เชื่อม Google Sheet)"); render(); return; }
     setStatus("syncing", "กำลังซิงก์ข้อมูล...");
     try {
       const r = await apiGet();
@@ -455,7 +517,9 @@
       } else { throw new Error("bad response"); }
     } catch (e) {
       render();
-      setStatus("offline", "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (แก้ไขต้องต่อเน็ต)", true);
+      setStatus("offline", navigator.onLine
+        ? "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (ลองกดโหลดใหม่)"
+        : "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (แก้ไขต้องต่อเน็ต)", true);
       maybeNotifyToday();
     }
   }
@@ -580,7 +644,7 @@
     if (names.length >= MAX_PER_DAY && !isAdminMode) { toast(`🚫 วันนี้เต็มแล้ว (${MAX_PER_DAY} คน)`); return; }
     if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
 
-    if (!apiUrl) { // โหมดเครื่องเดียว
+    if (!isShared()) { // โหมดเครื่องเดียว
       if (!serverData[selectedKey]) serverData[selectedKey] = [];
       serverData[selectedKey].push({ name, ts: new Date().toISOString() }); saveCache();
       refreshView(); nameInput.value=""; nameInput.focus(); return;
@@ -613,7 +677,7 @@
 
   async function removeName(name) {
     if (!isAdminMode) { toast("ลบได้เฉพาะแอดมิน — แจ้งแอดมินให้ลบ"); return; }
-    if (!apiUrl) { // โหมดเครื่องเดียว
+    if (!isShared()) { // โหมดเครื่องเดียว
       serverData[selectedKey] = (serverData[selectedKey]||[]).filter(n => nameOf(n) !== name);
       if (serverData[selectedKey].length === 0) delete serverData[selectedKey];
       saveCache(); refreshView(); return;
@@ -646,7 +710,7 @@
     const willBlock = !blockedSet.has(key);
     if (willBlock) blockedSet.add(key); else blockedSet.delete(key);   // อัปเดตทันที
     saveBlocked(); refreshView();
-    if (!apiUrl) return;   // โหมดเครื่องเดียว
+    if (!isShared()) return;   // โหมดเครื่องเดียว
     try {
       const r = await apiPost({ action: willBlock ? "block" : "unblock", date: key, key: adminKey });
       if (r && r.data) { serverData = r.data; saveCache(); }
@@ -698,7 +762,7 @@
   async function enterAdmin() {
     const k = adminInput.value.trim();
     if (!k) return;
-    if (!apiUrl) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); return; }
+    if (!isShared()) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); return; }
     const btn = document.getElementById("adminBtn");
     btn.disabled = true; btn.textContent = "...";
     try {
@@ -786,12 +850,20 @@
   window.addEventListener("offline", () => setStatus("offline","ออฟไลน์ · แสดงข้อมูลล่าสุด (แก้ไขต้องต่อเน็ต)", true));
 
   /* ---------- เริ่มทำงาน ---------- */
+  if (useSb) document.getElementById("apiSection").style.display = "none";   // ใช้ Supabase แล้ว ไม่ต้องตั้งลิงก์ Google
   recompute();
   render();
   syncFromServer();
+  startRealtime();
+
+  // กลับมาเปิดแอป (สลับจากแอปอื่น / ปลดล็อกจอ) → ดึงข้อมูลล่าสุด เผื่อ realtime หลุดระหว่างพักหน้าจอ
+  if (useSb) document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (lastStatus[0] === "offline") syncFromServer(); else onRemoteChange();
+  });
 
   // ยืนยันรหัสแอดมินที่เก็บไว้กับเซิร์ฟเวอร์ (เผื่อรหัสถูกเปลี่ยน) — ไม่ผ่านให้ออกจากโหมด
-  if (isAdminMode && apiUrl) {
+  if (isAdminMode && isShared()) {
     apiPost({ action:"auth", key: adminKey })
       .then(r => { if (!(r && r.ok && r.admin)) exitAdmin(); })
       .catch(() => {});

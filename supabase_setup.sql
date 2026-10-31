@@ -113,7 +113,12 @@ alter table public.leaves     enable row level security;
 alter table public.blocked    enable row level security;
 alter table public.app_config enable row level security;
 
--- อ่านได้ทุกคน (ใช้กับ realtime) แต่ "เขียน" ต้องผ่านฟังก์ชันด้านบนเท่านั้น
+-- สิทธิ์ตาราง: อ่านได้อย่างเดียว (ใช้กับ realtime) — "เขียน" ต้องผ่านฟังก์ชันด้านบนเท่านั้น
+-- (ตั้งเองตรงนี้ จึงใช้ได้ทั้งเปิด/ปิด "Automatically expose new tables" ตอนสร้างโปรเจกต์)
+grant usage on schema public to anon, authenticated;
+revoke all on public.leaves, public.blocked, public.app_config from anon, authenticated;
+grant select on public.leaves, public.blocked to anon, authenticated;
+
 drop policy if exists leaves_read  on public.leaves;
 create policy leaves_read  on public.leaves  for select to anon, authenticated using (true);
 drop policy if exists blocked_read on public.blocked;

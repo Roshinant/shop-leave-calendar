@@ -26,11 +26,18 @@
     --full: #ff5a76;
     --full-soft: #ffe6ea;
     --ok: #2bbf7a;
+    --ok-soft: #e3f7ee;
     --warnbg: #fff4e0;
     --warntx: #b8770a;
     --shadow: 0 10px 30px rgba(31,42,68,.08);
+    /* ประเภทการหยุด */
+    --t-off: #4f6cf7;   --t-off-soft: #eaefff;
+    --t-leave: #8b5cf6; --t-leave-soft: #f1ebff;
+    --t-sick: #e8590c;  --t-sick-soft: #fff0e6;
+    --t-half: #0f9f8f;  --t-half-soft: #e0f6f3;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     font-family: "Segoe UI", "Sarabun", "Noto Sans Thai", system-ui, sans-serif;
@@ -44,14 +51,25 @@
     min-height: 100vh; min-height: 100dvh;   /* dvh = รองรับแถบเบราว์เซอร์ทั้ง iOS/Android */
     display: flex; flex-direction: column;
   }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   header .brand-logo {
     height: 58px; width: 58px; flex: none; object-fit: contain; background: #fff;
     border-radius: 14px; padding: 5px; border: 1px solid var(--line); box-shadow: var(--shadow);
   }
+  header .h-text { flex: 1; min-width: 0; }
   header h1 { font-size: 1.4rem; margin: 0 0 3px; }
   header p { margin: 0; color: var(--muted); font-size: .9rem; }
   @media (max-width: 560px) { header .brand-logo { height: 50px; width: 50px; } header h1 { font-size: 1.2rem; } }
+
+  /* แถบ "สวัสดี ชื่อ" */
+  .me-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 1rem;
+  }
+  .me-bar .hello { flex: 1; min-width: 0; font-size: .82rem; color: var(--muted); }
+  .me-bar .hello b { display: block; color: var(--text); font-size: 1rem; }
+  .admin-badge { background:#1f2a44; color:#ffd76a; font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
 
   .toolbar {
     display: flex; align-items: center; justify-content: space-between;
@@ -68,6 +86,7 @@
   }
   button:hover { filter: brightness(.97); }
   button:disabled { opacity: .5; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
   button.ghost { background: #f0f2f7; color: var(--text); }
   button.primary { background: var(--primary); color: #fff; }
   button.danger { background: var(--full-soft); color: var(--full); }
@@ -83,18 +102,15 @@
   .status.online  .sdot { background: var(--ok); }
   .status.offline { background: var(--full-soft); color: var(--full); }
   .status.offline .sdot { background: var(--full); }
-  .status.local   { background: var(--warnbg); color: var(--warntx); }
-  .status.local   .sdot { background: var(--warntx); }
   .status.syncing { background: var(--primary-soft); color: var(--primary); }
   .status.syncing .sdot { background: var(--primary); animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   .status .grow { flex: 1; }
-  .admin-badge { background:#1f2a44; color:#ffd76a; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
   .status button { padding: 5px 10px; font-size: .78rem; }
 
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; color: var(--muted); font-size: .82rem; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+  .legend { display: flex; gap: 6px 12px; flex-wrap: wrap; margin-bottom: 12px; color: var(--muted); font-size: .8rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 11px; height: 11px; border-radius: 4px; display: inline-block; }
 
   .calendar {
     background: var(--card); border: 1px solid var(--line);
@@ -112,24 +128,26 @@
   .day {
     min-height: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
     padding: 6px; position: relative; cursor: pointer; transition: background .12s;
-    display: flex; flex-direction: column; gap: 3px; overflow: hidden;
+    display: flex; flex-direction: column; gap: 3px; overflow: hidden; min-width: 0;
   }
   .day:nth-child(7n) { border-right: none; }
   .day.empty { background: #fbfcfe; cursor: default; }
   .day:not(.empty):active { background: #eef2ff; }
   .day .num { font-weight: 700; font-size: .92rem; }
+  .day.past .num { color: var(--muted); }
   .day.today .num {
     background: var(--primary); color: #fff; width: 25px; height: 25px;
     border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   }
   .day.full { background: var(--full-soft); }
+  .day.mine { box-shadow: inset 0 0 0 2px var(--primary); }
   .names { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .names::-webkit-scrollbar { width: 0; }   /* ซ่อนสcrollbar ในช่องให้ดูสะอาด */
+  .names::-webkit-scrollbar { width: 0; }   /* ซ่อน scrollbar ในช่องให้ดูสะอาด */
   .chip {
-    font-size: .7rem; background: var(--primary-soft); color: var(--primary);
-    padding: 2px 7px; border-radius: 20px; white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; max-width: 100%;
+    font-size: .7rem; padding: 2px 7px; border-radius: 20px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 100%; font-weight: 600; flex: none;
   }
+  .chip.me { box-shadow: inset 0 0 0 1.5px currentColor; }
   .count-badge {
     position: absolute; top: 7px; right: 7px; font-size: .68rem; font-weight: 700;
     background: var(--ok); color: #fff; border-radius: 20px; padding: 1px 6px;
@@ -138,6 +156,15 @@
   .count-badge.blocked { background: #64748b; }
   .day.blocked { background: repeating-linear-gradient(45deg, #f0f2f7, #f0f2f7 8px, #e6e9f0 8px, #e6e9f0 16px); }
   .day.blocked .num { color: #64748b; }
+
+  /* สีตามประเภท */
+  .t-off   { background: var(--t-off-soft);   color: var(--t-off); }
+  .t-leave { background: var(--t-leave-soft); color: var(--t-leave); }
+  .t-sick  { background: var(--t-sick-soft);  color: var(--t-sick); }
+  .t-half  { background: var(--t-half-soft);  color: var(--t-half); }
+  .sw-off { background: var(--t-off); } .sw-leave { background: var(--t-leave); }
+  .sw-sick { background: var(--t-sick); } .sw-half { background: var(--t-half); }
+  .pill { font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; flex: none; }
 
   /* Modal */
   .overlay {
@@ -149,53 +176,81 @@
     background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px;
     padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
     box-shadow: 0 -10px 40px rgba(0,0,0,.2); animation: slideup .22s ease;
-    max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   @keyframes slideup { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  @media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
   @media (min-width:520px){
     .overlay{ align-items:center; padding:16px; }
     .modal{ border-radius:18px; animation:none; }
   }
   .modal h2 { margin: 0 0 4px; font-size: 1.2rem; }
   .modal .sub { color: var(--muted); margin: 0 0 14px; font-size: .9rem; }
-  .field { display: flex; gap: 8px; margin-bottom: 14px; }
-  .field input {
-    flex: 1; font-family: inherit; font-size: 1rem; padding: 12px; min-width: 0;
-    border: 1px solid var(--line); border-radius: 10px; outline: none;
-  }
-  .field input:focus { border-color: var(--primary); }
-  .list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-  #nameList, #sumList { max-height: 45vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .list-item {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; gap: 8px;
     background: #f7f9ff; border-radius: 10px; padding: 10px 12px; font-weight: 600;
   }
   .list-item button { padding: 6px 11px; font-size: .8rem; flex: none; }
-  .li-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .li-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
   .li-time { font-size: .74rem; color: var(--muted); font-weight: 500; }
+  .you { font-size: .7rem; color: var(--primary); font-weight: 700; margin-left: 5px; }
   .empty-note { color: var(--muted); font-size: .9rem; padding: 12px 0; text-align: center; }
-  .warn {
-    background: var(--full-soft); color: var(--full); border-radius: 10px;
-    padding: 10px 12px; font-size: .85rem; font-weight: 600; margin-bottom: 12px; display: none;
+  .note {
+    background: var(--full-soft); color: #c2334d; border-radius: 10px;
+    padding: 10px 12px; font-size: .86rem; font-weight: 600; margin-bottom: 12px;
   }
-  .warn.show { display: block; }
-  .warn.warn-info { background: var(--primary-soft); color: var(--primary); }
-  .sum-count { flex: none; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .82rem; padding: 3px 12px; border-radius: 20px; }
-  .chip.chip-pending { opacity: .55; }
-  .list-item.item-pending { opacity: .6; }
-  .list-item.item-pending .li-time { color: var(--primary); }
-  .modal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
-  .slots { font-size: .85rem; color: var(--muted); margin-bottom: 12px; }
-  .slots b { color: var(--text); }
+  .note.info { background: var(--primary-soft); color: var(--primary); }
+  .note.ok { background: var(--ok-soft); color: #17885a; }
+  .note.warn { background: var(--warnbg); color: var(--warntx); }
+  .sec-title { font-weight: 700; font-size: .92rem; margin: 4px 0 8px; }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .type-btn { text-align: left; padding: 12px; border-radius: 14px; border: 2px solid transparent; display: flex; flex-direction: column; gap: 2px; }
+  .type-btn b { font-size: 1.02rem; }
+  .type-btn small { font-weight: 500; font-size: .74rem; opacity: .85; }
+  .type-btn.sel { border-color: currentColor; }
+  .halfpick { display: flex; gap: 8px; margin-bottom: 10px; }
+  .halfpick button { flex: 1; background: var(--t-half-soft); color: var(--t-half); border: 2px solid transparent; }
+  .halfpick button.sel { border-color: var(--t-half); }
+  .wide { width: 100%; padding: 13px; font-size: 1rem; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .tally { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
+  .tally div { border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .tally b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+  .tally span { font-size: .74rem; font-weight: 600; }
+  .sum-pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .sum-total { flex: none; font-weight: 700; font-size: .82rem; color: var(--muted); min-width: 52px; text-align: right; }
+  .field { display: flex; gap: 8px; margin-bottom: 10px; }
+  .field input, .text-input {
+    flex: 1; font-family: inherit; font-size: 1rem; padding: 12px; min-width: 0; width: 100%;
+    border: 1px solid var(--line); border-radius: 10px; outline: none; background: #fff; color: var(--text);
+  }
+  .field input:focus, .text-input:focus { border-color: var(--primary); }
+  .set-help { color: var(--muted); font-size: .84rem; margin: 0 0 12px; line-height: 1.5; }
 
-  /* Settings modal */
-  .set-label { font-weight: 700; font-size: .9rem; margin: 4px 0 6px; }
-  .set-help { color: var(--muted); font-size: .82rem; margin: 0 0 14px; line-height: 1.5; }
-  textarea.url {
-    width: 100%; font-family: inherit; font-size: .9rem; padding: 11px;
-    border: 1px solid var(--line); border-radius: 10px; outline: none; resize: vertical; min-height: 70px;
+  /* ---------- หน้าเข้าระบบ ---------- */
+  .login {
+    max-width: 440px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 16px;
   }
-  textarea.url:focus { border-color: var(--primary); }
+  .login-brand { display: flex; align-items: center; gap: 12px; }
+  .login-brand img { height: 50px; width: 50px; object-fit: contain; background: #fff; border-radius: 14px; padding: 5px; border: 1px solid var(--line); }
+  .login-brand b { font-size: 1.1rem; }
+  .login-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; text-align: center; }
+  .login-card h1 { margin: 0; font-size: 1.4rem; text-wrap: balance; }
+  .login-card p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+  .login-card .text-input { font-size: 1.15rem; padding: 14px 16px; text-align: center; }
+  .big-name { font-size: 2rem; font-weight: 800; color: var(--primary); word-break: break-word; }
+  .login-card .avatar { width: 64px; height: 64px; font-size: 1.5rem; margin: 0 auto; }
+  .dots { display: flex; justify-content: center; gap: 14px; margin: 6px 0; }
+  .dots span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--primary); }
+  .dots span.on { background: var(--primary); }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 280px; margin: 0 auto; }
+  .keypad button { font-size: 1.35rem; padding: 14px 0; background: var(--bg); color: var(--text); border-radius: 16px; font-variant-numeric: tabular-nums; }
+  .row2 { display: flex; gap: 8px; }
+  .row2 button { flex: 1; padding: 13px; }
+  .link { background: transparent; color: var(--primary); padding: 8px; font-size: .88rem; }
 
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
@@ -209,42 +264,65 @@
     .day { min-height: 0; padding: 3px; gap: 2px; }
     .chip { font-size: .58rem; padding: 1px 5px; }
     .day .num { font-size: .76rem; }
+    .day.today .num { width: 21px; height: 21px; }
     .weekdays div { font-size: .7rem; padding: 7px 1px; }
     .count-badge { font-size: .56rem; padding: 0 4px; top: 4px; right: 4px; }
     .names { gap: 2px; }
     .month-title { order: -1; width: 100%; margin-bottom: 4px; }
+    .legend { font-size: .74rem; gap: 4px 10px; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- ================= หน้าเข้าระบบ (ครั้งแรกครั้งเดียว) ================= -->
+<div class="login" id="loginView" hidden>
+  <div class="login-brand">
+    <img src="logo/logo.jpg" alt="โลตัสมือถือ">
+    <b>หยุดงาน โลตัสมือถือ</b>
+  </div>
+  <div class="login-card" id="loginCard"></div>
+</div>
+
+<!-- ================= แอปหลัก ================= -->
+<div class="wrap" id="appView" hidden>
   <header>
     <img src="logo/logo.jpg" alt="โลตัสมือถือ" class="brand-logo">
-    <div>
+    <div class="h-text">
       <h1>หยุดงาน โลตัสมือถือ</h1>
-      <p>คลิกที่วันเพื่อลงชื่อหยุด — หยุดได้สูงสุดวันละ 4 คน</p>
+      <p>แตะวันที่เพื่อลง · วันละ 4 คน (ไม่นับลาป่วย)</p>
     </div>
   </header>
+
+  <div class="me-bar">
+    <div class="avatar" id="meAvatar"></div>
+    <div class="hello"><b id="meName"></b><span id="meSub">เครื่องนี้จำไว้แล้ว</span></div>
+    <span class="admin-badge" id="adminBadge" hidden>👑 แอดมิน</span>
+  </div>
 
   <div class="status" id="status"><span class="sdot"></span><span class="grow" id="statusText">กำลังเชื่อมต่อ...</span></div>
 
   <div class="toolbar">
     <div class="nav">
-      <button class="ghost" id="prev">‹</button>
+      <button class="ghost" id="prev" aria-label="เดือนก่อน">‹</button>
       <button class="ghost" id="today-btn">วันนี้</button>
     </div>
     <div class="month-title" id="monthTitle"></div>
     <div class="nav">
-      <button class="ghost" id="next">›</button>
+      <button class="ghost" id="next" aria-label="เดือนถัดไป">›</button>
+      <button class="icon ghost" id="mine-btn" title="วันหยุดของฉัน">👤</button>
       <button class="icon ghost" id="summary-btn" title="สรุปวันหยุด">📊</button>
-      <button class="icon ghost" id="settings-btn" title="ตั้งค่า">⚙️</button>
+      <button class="icon ghost" id="admin-btn" title="แอดมิน" hidden>⚙️</button>
     </div>
   </div>
 
   <div class="legend">
-    <span><i class="dot" style="background:var(--ok)"></i> ยังลงได้</span>
-    <span><i class="dot" style="background:var(--full)"></i> เต็มแล้ว (4 คน)</span>
-    <span><i class="dot" style="background:var(--primary)"></i> วันนี้</span>
+    <span><i class="dot sw-off"></i>หยุด</span>
+    <span><i class="dot sw-leave"></i>ลา</span>
+    <span><i class="dot sw-sick"></i>ลาป่วย</span>
+    <span><i class="dot sw-half"></i>ครึ่งวัน</span>
+    <span><i class="dot" style="background:var(--full)"></i>เต็ม 4 คน</span>
+    <span><i class="dot" style="box-shadow: inset 0 0 0 2px var(--primary)"></i>วันของคุณ</span>
   </div>
 
   <div class="calendar">
@@ -255,54 +333,19 @@
   </div>
 </div>
 
-<!-- Modal: ลงชื่อหยุด -->
+<!-- Modal: วันที่เลือก -->
 <div class="overlay" id="overlay">
-  <div class="modal">
-    <h2 id="modalDate">วันที่</h2>
-    <p class="sub">ลงชื่อคนที่จะหยุดในวันนี้</p>
-    <div class="slots">ลงแล้ว <b id="slotUsed">0</b> / 4 คน · เหลือ <b id="slotLeft">4</b> ที่</div>
-    <div class="warn" id="warn">🚫 วันนี้มีคนลงครบ 4 คนแล้ว ลงเพิ่มไม่ได้</div>
-    <div class="field">
-      <input type="text" id="nameInput" placeholder="พิมพ์ชื่อคนที่จะหยุด..." maxlength="30" autocomplete="off">
-      <button class="primary" id="addBtn">เพิ่ม</button>
-    </div>
-    <div class="list" id="nameList"></div>
-    <button id="blockBtn" style="display:none; width:100%; margin-top:6px;"></button>
-    <div class="modal-foot">
-      <button class="ghost" id="closeBtn">ปิด</button>
-    </div>
-  </div>
+  <div class="modal" id="dayModal" role="dialog" aria-modal="true"></div>
 </div>
 
-<!-- Modal: ตั้งค่า -->
-<div class="overlay" id="setOverlay">
+<!-- Modal: ของฉัน -->
+<div class="overlay" id="mineOverlay">
   <div class="modal">
-    <h2>⚙️ ตั้งค่าการเชื่อมต่อ</h2>
-    <div id="apiSection">
-    <p class="sub">เชื่อมกับ Google Sheet เพื่อให้ทุกเครื่องเห็นข้อมูลตรงกัน</p>
-    <div class="set-label">ลิงก์ Google Apps Script (Web App URL)</div>
-    <p class="set-help">วางลิงก์ที่ได้จากการ Deploy Apps Script ที่ลงท้ายด้วย <b>/exec</b><br>
-      ถ้าเว้นว่างไว้ = เก็บข้อมูลในเครื่องนี้เครื่องเดียว (ไม่แชร์)</p>
-    <textarea class="url" id="apiInput" placeholder="https://script.google.com/macros/s/....../exec"></textarea>
-    <div class="modal-foot" style="justify-content:flex-end; margin-top:12px;">
-      <button class="primary" id="setSaveBtn">บันทึกและเชื่อมต่อ</button>
-    </div>
-
-    <hr style="border:none; border-top:1px solid var(--line); margin:18px 0;">
-    </div>
-
-    <div class="set-label">👑 โหมดแอดมิน (สำหรับหัวหน้า)</div>
-    <p class="set-help" id="adminHelp">ใส่รหัสแอดมินเพื่อปลดล็อก <b>ลบชื่อ</b> · <b>เพิ่มเกิน 4 คน/วัน</b> · <b>ตั้งวันห้ามหยุด</b><br>
-      พนักงานทั่วไปเพิ่มได้อย่างเดียว (ไม่เกิน 4) · ลบไม่ได้ ต้องแจ้งแอดมิน</p>
-    <div class="field" id="adminField">
-      <input type="password" id="adminInput" placeholder="รหัสแอดมิน..." autocomplete="off">
-      <button class="primary" id="adminBtn">เข้าโหมดแอดมิน</button>
-    </div>
-    <button class="danger" id="adminExitBtn" style="display:none; width:100%;">ออกจากโหมดแอดมิน</button>
-
-    <div class="modal-foot" style="margin-top:16px;">
-      <button class="ghost" id="setCloseBtn">ปิด</button>
-    </div>
+    <h2 id="mineTitle">👤 วันหยุดของฉัน</h2>
+    <p class="sub" id="mineSub"></p>
+    <div class="tally" id="mineTally"></div>
+    <div class="list" id="mineList"></div>
+    <div class="modal-foot"><button class="ghost" data-close="mineOverlay">ปิด</button></div>
   </div>
 </div>
 
@@ -310,11 +353,25 @@
 <div class="overlay" id="sumOverlay">
   <div class="modal">
     <h2 id="sumTitle">📊 สรุปวันหยุด</h2>
-    <p class="sub" id="sumSub">รวมจำนวนวันที่แต่ละคนลงหยุดในเดือนนี้</p>
+    <p class="sub" id="sumSub"></p>
     <div class="list" id="sumList"></div>
-    <div class="modal-foot">
-      <button class="ghost" id="sumCloseBtn">ปิด</button>
+    <div class="modal-foot"><button class="ghost" data-close="sumOverlay">ปิด</button></div>
+  </div>
+</div>
+
+<!-- Modal: แอดมิน -->
+<div class="overlay" id="adminOverlay">
+  <div class="modal">
+    <h2>⚙️ แอดมิน</h2>
+    <p class="sub" id="adminSub"></p>
+    <div class="sec-title">รีเซ็ตรหัสพนักงาน (กรณีลืมรหัส / เปลี่ยนมือถือแล้วจำรหัสไม่ได้)</div>
+    <p class="set-help">พิมพ์ชื่อพนักงาน แล้วกดรีเซ็ต เขาจะต้องเข้าระบบใหม่และตั้งรหัสใหม่</p>
+    <div class="field">
+      <input type="text" id="resetName" placeholder="ชื่อพนักงาน" maxlength="20" autocomplete="off">
+      <button class="danger" id="resetBtn">รีเซ็ต</button>
     </div>
+    <div class="modal-foot"><button class="ghost" data-close="adminOverlay">ปิด</button></div>
+  </div>
 </div>
 
 <!-- Modal: แจ้งเตือนวันหยุดวันนี้ -->
@@ -323,9 +380,7 @@
     <h2>📢 แจ้งเตือนวันหยุด</h2>
     <p class="sub" id="notifyDate"></p>
     <div class="list" id="notifyList"></div>
-    <div class="modal-foot">
-      <button class="primary" id="notifyCloseBtn">รับทราบ</button>
-    </div>
+    <div class="modal-foot"><button class="primary" data-close="notifyOverlay">รับทราบ</button></div>
   </div>
 </div>
 
@@ -334,105 +389,75 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
   /* ================== ตั้งค่า ==================
-     👉 ฐานข้อมูลหลัก = Supabase (เร็ว + อัปเดตทุกเครื่องทันที)
-        ใส่ Project URL และ anon/publishable key จาก Supabase → Project Settings → API
-        ถ้าเว้นว่าง "" = กลับไปใช้ Google Apps Script ด้านล่างแบบเดิม                */
+     ฐานข้อมูล = Supabase (โปรเจกต์ lotus-leave) · กติกาทั้งหมดบังคับที่ฐานข้อมูล (supabase_v2_staff.sql)
+     คีย์นี้เป็นคีย์สาธารณะ (publishable) ใส่ในเว็บได้                          */
   const SUPABASE_URL = "https://tswvgylwjczwdxsncqqn.supabase.co";
   const SUPABASE_KEY = "sb_publishable_ULdFL_9uaCPQshOPCUGbGw_H_b5KoJm";
-
-  /* สำรอง: ลิงก์ Web App จาก Google Apps Script (ใช้เมื่อไม่ได้ตั้ง Supabase)
-     ถ้าเว้นว่าง "" = โหมดเครื่องเดียว (เก็บในเครื่อง ไม่แชร์)          */
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwzfRk-x42pNBBguwM_RQoHmh7bQ5klBrRI4pYC9DISY5LwfloAAoYCMA3cYvXwOMUq/exec";
   /* ============================================ */
 
-  const STORAGE_KEY = "shop_leave_calendar";   // cache ข้อมูลตาราง
-  const API_KEY = "shop_leave_api";            // เก็บ URL ที่ตั้งเอง
-  const ADMIN_LS = "shop_leave_adminkey";      // เก็บรหัสแอดมินในเครื่องหัวหน้า
-  const BLOCK_KEY = "shop_leave_blocked";      // cache วันห้ามหยุด
   const MAX_PER_DAY = 4;
+  const TYPES = {
+    off:   { label: "หยุด",     hint: "วันหยุดประจำสัปดาห์" },
+    leave: { label: "ลา",       hint: "ลากิจ / ธุระส่วนตัว" },
+    sick:  { label: "ลาป่วย",   hint: "ลงได้แม้วันเต็ม" },
+    half:  { label: "ครึ่งวัน", hint: "เลือกเช้า / บ่าย" },
+  };
+  const CACHE_KEY   = "shop_leave_v2_cache";   // ข้อมูลล่าสุด (เปิดดูตอนออฟไลน์)
+  const SESSION_KEY = "shop_leave_session";    // เครื่องนี้เป็นของใคร {token, name, is_admin}
+  const NOTIFY_KEY  = "shop_leave_notified";
   const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
                       "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
-
-  let serverData = loadCache();   // ข้อมูลล่าสุดจากเซิร์ฟเวอร์ (หรือ cache)
-  let pendingOps = [];            // รายการที่กดแล้วแต่ยังไม่ยืนยันจากเซิร์ฟเวอร์
-  let opSeq = 0;
-  let data = {};                  // ข้อมูลที่ "แสดงบนจอ" = server + pending (คำนวณด้วย recompute)
-  let apiUrl = localStorage.getItem(API_KEY) || DEFAULT_API_URL || "";
-  let adminKey = localStorage.getItem(ADMIN_LS) || "";
-  let isAdminMode = !!adminKey;   // ปลดล็อก: ลบชื่อ / เพิ่มเกิน 4 คน / ตั้งวันห้ามหยุด
-  let blockedSet = new Set(loadBlocked());   // วันห้ามหยุด (YYYY-MM-DD)
-  let viewYear, viewMonth, selectedKey = null;
-
-  const today = new Date();
-  viewYear = today.getFullYear();
-  viewMonth = today.getMonth();
-
-  /* ---------- เก็บ/อ่าน cache ในเครื่อง ---------- */
-  function loadCache() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-    catch { return {}; }
-  }
-  function saveCache() { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverData)); }
-  function loadBlocked() { try { return JSON.parse(localStorage.getItem(BLOCK_KEY)) || []; } catch { return []; } }
-  function saveBlocked() { localStorage.setItem(BLOCK_KEY, JSON.stringify([...blockedSet])); }
-  function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-
-  /* ---------- รวม server + รายการ pending เป็นข้อมูลที่แสดง ---------- */
-  function cloneData(src){
-    const o = {};
-    for (const k in src) o[k] = (src[k]||[]).map(e => (e && typeof e==="object") ? {name:e.name, ts:e.ts} : {name:String(e), ts:null});
-    return o;
-  }
-  function applyPending(){
-    const o = cloneData(serverData);
-    for (const op of pendingOps){
-      if (op.type === "add"){
-        if (!o[op.date]) o[op.date] = [];
-        if (!o[op.date].some(e => nameOf(e).toLowerCase() === op.name.toLowerCase()))
-          o[op.date].push({ name: op.name, ts: op.ts, pending: true });
-      } else if (op.type === "remove"){
-        if (o[op.date]) o[op.date] = o[op.date].filter(e => nameOf(e).toLowerCase() !== op.name.toLowerCase());
-        if (o[op.date] && o[op.date].length === 0) delete o[op.date];
-      }
-    }
-    return o;
-  }
-  function recompute(){ data = applyPending(); }
-  function dropOp(id){ pendingOps = pendingOps.filter(o => o.id !== id); }
-  function pendingOf(e){ return !!(e && typeof e==="object" && e.pending); }
-  function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-  /* รองรับข้อมูล 2 แบบ: "ชื่อ" (แบบเก่า) หรือ {name, ts} (แบบใหม่ที่มีเวลา) */
   const thaiMon = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  function nameOf(e){ return (e && typeof e === "object") ? String(e.name) : String(e); }
-  function tsOf(e){ return (e && typeof e === "object") ? e.ts : null; }
-  function fmtTime(v){
+  const thaiDow = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+  const ERR = {
+    full: `🚫 วันนี้เต็ม ${MAX_PER_DAY} คนแล้ว ลงได้เฉพาะลาป่วย`,
+    duplicate: "คุณลงวันนี้ไว้แล้ว",
+    blocked: "🚫 วันห้ามหยุด ลงได้เฉพาะลาป่วย",
+    past: "วันที่ผ่านมาแล้ว ลงย้อนหลังไม่ได้",
+    forbidden: "ทำได้เฉพาะแอดมิน",
+    invalid: "ข้อมูลไม่ถูกต้อง ลองใหม่",
+    not_found: "ไม่พบชื่อนี้ หรือคนนี้ยังไม่ได้ตั้งรหัส",
+  };
+
+  /* ---------- เก็บในเครื่อง (กันเบราว์เซอร์ที่ปิด storage) ---------- */
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  let db = store.get(CACHE_KEY) || { data: {}, blocked: [], admins: ["อาย", "เซเว่น"] };
+  let session = store.get(SESSION_KEY);
+  const today = new Date();
+  let viewYear = today.getFullYear(), viewMonth = today.getMonth();
+  let selectedKey = null;
+
+  /* ---------- ตัวช่วย ---------- */
+  const $ = id => document.getElementById(id);
+  function keyOf(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+  function parseKey(k) { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); }
+  const todayKey = keyOf(today.getFullYear(), today.getMonth(), today.getDate());
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function entries(k) { return db.data[k] || []; }
+  function typeOf(e) { return TYPES[e.type] ? e.type : "off"; }
+  function quota(k) { return entries(k).filter(e => typeOf(e) !== "sick").length; }
+  function isBlocked(k) { return db.blocked.includes(k); }
+  function isPast(k) { return k < todayKey; }
+  function isMe(e) { return !!session && e.name.toLowerCase() === session.name.toLowerCase(); }
+  function isAdmin() { return !!(session && session.is_admin); }
+  function typeText(e) { return TYPES[typeOf(e)].label + (e.half ? ` (${e.half})` : ""); }
+  function dayText(k) { const d = parseKey(k); return `${thaiDow[d.getDay()]} ${d.getDate()} ${thaiMon[d.getMonth()]} ${d.getFullYear() + 543}`; }
+  function shortDay(k) { const d = parseKey(k); return `${d.getDate()} ${thaiMon[d.getMonth()]}`; }
+  function fmtTime(v) {
     if (!v) return "";
     const d = new Date(v);
-    if (isNaN(d.getTime())) return `ลง ${v} น.`;   // เซิร์ฟเวอร์ส่งข้อความพร้อมแสดงมาแล้ว เช่น "6 ก.ค. 08:30"
-    const hh = String(d.getHours()).padStart(2,"0");
-    const mm = String(d.getMinutes()).padStart(2,"0");
-    return `ลง ${d.getDate()} ${thaiMon[d.getMonth()]} ${hh}:${mm} น.`;
+    if (isNaN(d.getTime())) return "";
+    return `ลง ${d.getDate()} ${thaiMon[d.getMonth()]} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")} น.`;
   }
+  function adminNames() { return (db.admins && db.admins.length ? db.admins : ["อาย", "เซเว่น"]).join(", "); }
+  function initial(n) { return [...String(n)][0] || "?"; }
 
-  /* ---------- แถบสถานะ ---------- */
-  const statusEl = document.getElementById("status");
-  const statusText = document.getElementById("statusText");
-  let lastStatus = ["local", "", false];
-  function setStatus(mode, text, withReload) {
-    lastStatus = [mode, text, withReload];
-    statusEl.className = "status " + mode;
-    const adminBadge = isAdminMode ? `<span class="admin-badge">👑 แอดมิน</span>` : "";
-    statusEl.innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` + adminBadge +
-      (withReload ? `<button class="ghost" id="reloadBtn">โหลดใหม่</button>` : "");
-    const rb = document.getElementById("reloadBtn");
-    if (rb) rb.addEventListener("click", syncFromServer);
-  }
-  function refreshStatus() { setStatus(lastStatus[0], lastStatus[1], lastStatus[2]); }
-
-  /* ---------- Supabase (คืนค่ารูปแบบเดียวกับ Apps Script: {ok, data, blocked, error, admin}) ---------- */
-  const useSb = !!(SUPABASE_URL && SUPABASE_KEY);
-  const SB_ERRORS = ["full", "duplicate", "blocked", "forbidden", "invalid"];
+  /* ---------- Supabase ---------- */
   let sbClient = null;
   function sb() {
     if (!sbClient) {
@@ -441,433 +466,413 @@
     }
     return sbClient;
   }
-  function isShared() { return useSb || !!apiUrl; }
-
-  async function sbGet() {
-    const { data, error } = await sb().rpc("get_all");
-    if (error) throw error;
-    return { ok: true, data: data.data, blocked: data.blocked };
+  // error.biz = กติกาของร้าน (เช่น full) · ไม่มี biz = เน็ต/เซิร์ฟเวอร์มีปัญหา
+  async function rpc(fn, args) {
+    const { data, error } = await sb().rpc(fn, args || {});
+    if (error) { const e = new Error(error.message); e.biz = error.code === "P0001"; throw e; }
+    return data;
   }
-  async function sbPost(p) {
-    const key = p.key || null;
-    const call = {
-      auth:    ["is_admin",     { p_key: key }],
-      add:     ["add_leave",    { p_date: p.date, p_name: p.name, p_key: key }],
-      remove:  ["remove_leave", { p_date: p.date, p_name: p.name, p_key: key }],
-      block:   ["set_blocked",  { p_date: p.date, p_block: true,  p_key: key }],
-      unblock: ["set_blocked",  { p_date: p.date, p_block: false, p_key: key }],
-    }[p.action];
-    if (!call) return { ok: false, error: "unknown_action" };
-    const { data, error } = await sb().rpc(call[0], call[1]);
-    if (p.action === "auth") { if (error) throw error; return { ok: true, admin: data === true }; }
-    if (error) {
-      if (!SB_ERRORS.includes(error.message)) throw error;   // เน็ต/เซิร์ฟเวอร์มีปัญหา → ให้ไปทาง catch เดิม
-      const r = await sbGet().catch(() => ({}));            // ส่งข้อมูลล่าสุดกลับไปด้วย เหมือน Apps Script
-      return { ...r, ok: false, error: error.message };
-    }
-    return { ok: true, data: data.data, blocked: data.blocked };
+  function setData(d) {
+    db = { data: d.data || {}, blocked: d.blocked || [], admins: d.admins || db.admins };
+    store.set(CACHE_KEY, db);
   }
 
-  // มีคนแก้ข้อมูลจากเครื่องอื่น → ดึงใหม่ทันที (รวบหลายเหตุการณ์ติดกันเป็นครั้งเดียว)
-  let rtTimer;
-  function onRemoteChange() {
-    clearTimeout(rtTimer);
-    rtTimer = setTimeout(async () => { if (await reconcile()) refreshView(); }, 400);
+  /* ---------- แถบสถานะ ---------- */
+  function setStatus(mode, text, withReload) {
+    $("status").className = "status " + mode;
+    $("status").innerHTML = `<span class="sdot"></span><span class="grow">${text}</span>` +
+      (withReload ? `<button class="ghost" id="reloadBtn">โหลดใหม่</button>` : "");
+    const rb = $("reloadBtn");
+    if (rb) rb.addEventListener("click", syncFromServer);
   }
-  function startRealtime() {
-    if (!useSb || !window.supabase) return;
-    sb().channel("leave-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leaves" }, onRemoteChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "blocked" }, onRemoteChange)
-      .subscribe();
-  }
-
-  /* ---------- เรียกเซิร์ฟเวอร์ (Supabase หรือ Google Sheet) ---------- */
-  async function apiGet() {
-    if (useSb) return sbGet();
-    const res = await fetch(apiUrl, { method: "GET" });
-    return res.json();
-  }
-  async function apiPost(payload) {
-    if (useSb) return sbPost(payload);
-    // ส่งเป็น text/plain เพื่อเลี่ยง CORS preflight ของ Apps Script
-    const res = await fetch(apiUrl, { method: "POST", body: JSON.stringify(payload) });
-    return res.json();
-  }
-
-  // ดึงข้อมูลล่าสุดมายืนยันสถานะ (คืน true ถ้าสำเร็จ)
-  async function reconcile() {
-    try { const g = await apiGet(); if (g && g.ok) { serverData = g.data || {}; blockedSet = new Set(g.blocked || []); saveCache(); saveBlocked(); recompute(); return true; } } catch(e) {}
-    return false;
-  }
-
+  let lastMode = "";
   async function syncFromServer() {
-    if (!isShared()) { setStatus("local", "โหมดเครื่องเดียว (ยังไม่ได้เชื่อม Google Sheet)"); render(); return; }
     setStatus("syncing", "กำลังซิงก์ข้อมูล...");
     try {
-      const r = await apiGet();
-      if (r && r.ok) {
-        serverData = r.data || {};
-        blockedSet = new Set(r.blocked || []);
-        saveCache(); saveBlocked();
-        recompute();
-        render();
-        setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
-        maybeNotifyToday();
-      } else { throw new Error("bad response"); }
+      setData(await rpc("get_all"));
+      lastMode = "online";
+      setStatus("online", "เชื่อมต่อแล้ว · ข้อมูลตรงกันทุกเครื่อง", true);
     } catch (e) {
-      render();
+      lastMode = "offline";
       setStatus("offline", navigator.onLine
         ? "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (ลองกดโหลดใหม่)"
-        : "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (แก้ไขต้องต่อเน็ต)", true);
-      maybeNotifyToday();
+        : "ออฟไลน์ · แสดงข้อมูลล่าสุดที่บันทึกไว้ (ลงวันต้องต่อเน็ต)", true);
     }
+    refreshView();
+    maybeNotifyToday();
   }
 
   /* ---------- ปฏิทิน ---------- */
-  const daysEl = document.getElementById("days");
-  const monthTitle = document.getElementById("monthTitle");
-
   function render() {
-    monthTitle.textContent = `${monthNames[viewMonth]} ${viewYear + 543}`;
+    $("monthTitle").textContent = `${monthNames[viewMonth]} ${viewYear + 543}`;
+    const daysEl = $("days");
     daysEl.innerHTML = "";
     const firstDay = new Date(viewYear, viewMonth, 1).getDay();
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-      const cell = document.createElement("div");
-      cell.className = "day empty";
-      daysEl.appendChild(cell);
-    }
+    let html = "";
+    for (let i = 0; i < firstDay; i++) html += `<div class="day empty"></div>`;
     for (let d = 1; d <= daysInMonth; d++) {
-      const key = keyOf(viewYear, viewMonth, d);
-      const names = data[key] || [];
-      const isBlocked = blockedSet.has(key);
-      const cell = document.createElement("div");
-      cell.className = "day";
-      if (isBlocked) cell.classList.add("blocked");
-      else if (names.length >= MAX_PER_DAY) cell.classList.add("full");
-      const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-      if (isToday) cell.classList.add("today");
-      const chips = names.map(n => `<span class="chip${pendingOf(n) ? " chip-pending" : ""}">${escapeHtml(nameOf(n))}</span>`).join("");
+      const k = keyOf(viewYear, viewMonth, d);
+      const es = entries(k), q = quota(k), blk = isBlocked(k), full = q >= MAX_PER_DAY;
+      const mine = es.some(isMe);
+      const cls = ["day", blk ? "blocked" : full ? "full" : "", isPast(k) ? "past" : "",
+                   k === todayKey ? "today" : "", mine ? "mine" : ""].join(" ");
       let badge = "";
-      if (isBlocked) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
-      else if (names.length > 0) badge = `<span class="count-badge${names.length >= MAX_PER_DAY ? " full" : ""}">${names.length}/${MAX_PER_DAY}</span>`;
-      cell.innerHTML = `<span class="num">${d}</span>${badge}<div class="names">${chips}</div>`;
-      cell.addEventListener("click", () => openModal(key));
-      daysEl.appendChild(cell);
+      if (blk) badge = `<span class="count-badge blocked">ห้ามหยุด</span>`;
+      else if (es.length) badge = `<span class="count-badge${full ? " full" : ""}">${q}/${MAX_PER_DAY}</span>`;
+      const sorted = [...es].sort((a, b) => isMe(b) - isMe(a));   // ชื่อตัวเองขึ้นก่อน
+      const chips = sorted.map(e => `<span class="chip t-${typeOf(e)}${isMe(e) ? " me" : ""}">${escapeHtml(e.name)}${typeOf(e) === "half" ? "½" : ""}</span>`).join("");
+      html += `<div class="${cls}" data-k="${k}" role="button" tabindex="0" aria-label="${dayText(k)}"><span class="num">${d}</span>${badge}<div class="names">${chips}</div></div>`;
     }
+    daysEl.innerHTML = html;
   }
+  $("days").addEventListener("click", e => { const c = e.target.closest("[data-k]"); if (c) openDay(c.dataset.k); });
+  $("days").addEventListener("keydown", e => { if (e.key === "Enter") { const c = e.target.closest("[data-k]"); if (c) openDay(c.dataset.k); } });
 
-  /* ---------- Modal ลงชื่อ ---------- */
-  const overlay = document.getElementById("overlay");
-  const modalDate = document.getElementById("modalDate");
-  const nameInput = document.getElementById("nameInput");
-  const nameList = document.getElementById("nameList");
-  const warn = document.getElementById("warn");
-  const slotUsed = document.getElementById("slotUsed");
-  const slotLeft = document.getElementById("slotLeft");
-  const addBtn = document.getElementById("addBtn");
+  /* ---------- หน้าต่างวันที่ ---------- */
+  let pick = null, halfPick = "เช้า", busy = false;
+  function openDay(k) { selectedKey = k; pick = null; halfPick = "เช้า"; renderDay(); $("overlay").classList.add("show"); }
+  function closeDay() { $("overlay").classList.remove("show"); selectedKey = null; }
 
-  function openModal(key) {
-    selectedKey = key;
-    const [y, m, d] = key.split("-").map(Number);
-    modalDate.textContent = `${d} ${monthNames[m-1]} ${y + 543}`;
-    renderModal();
-    overlay.classList.add("show");
-    setTimeout(() => nameInput.focus(), 100);
-  }
-  function renderModal() {
-    const names = data[selectedKey] || [];
-    slotUsed.textContent = names.length;
-    slotLeft.textContent = Math.max(0, MAX_PER_DAY - names.length);
-    nameList.innerHTML = "";
-    if (names.length === 0) {
-      nameList.innerHTML = `<div class="empty-note">ยังไม่มีใครลงหยุดวันนี้</div>`;
+  function renderDay() {
+    if (!selectedKey) return;
+    const k = selectedKey, es = entries(k), q = quota(k);
+    const blk = isBlocked(k), full = q >= MAX_PER_DAY, past = isPast(k), admin = isAdmin();
+    const my = es.find(isMe), sick = es.length - q;
+    let h = `<h2>${dayText(k)}</h2><p class="sub">${blk ? "วันห้ามหยุด" : `หยุดแล้ว ${q}/${MAX_PER_DAY} คน${sick ? ` · ลาป่วย ${sick} คน` : ""}`}</p>`;
+    h += `<div class="list">` + (es.length ? es.map(e =>
+      `<div class="list-item"><div class="li-info"><span>${escapeHtml(e.name)}${isMe(e) ? `<span class="you">คุณ</span>` : ""}</span>` +
+      `<span class="li-time">${fmtTime(e.ts)}</span></div><span class="pill t-${typeOf(e)}">${typeText(e)}</span>` +
+      (admin && e.id ? `<button class="danger" data-del="${e.id}" data-name="${escapeHtml(e.name)}">ลบ</button>` : "") + `</div>`).join("")
+      : `<div class="empty-note">ยังไม่มีใครลงวันนี้</div>`) + `</div>`;
+
+    if (past && !admin) {
+      h += `<div class="note info">วันที่ผ่านมาแล้ว ดูได้อย่างเดียว</div>`;
+    } else if (my) {
+      h += `<div class="note info">คุณลงวันนี้ไว้แล้ว: <b>${typeText(my)}</b>` +
+        (admin ? `<br>ลบได้ที่ปุ่ม "ลบ" ข้างชื่อ` : `<br>ต้องการยกเลิก แจ้งแอดมิน (${escapeHtml(adminNames())})`) + `</div>`;
     } else {
-      names.forEach((n, i) => {
-        const nm = nameOf(n), pend = pendingOf(n), ts = pend ? "⏳ กำลังบันทึก..." : fmtTime(tsOf(n));
-        const item = document.createElement("div");
-        item.className = "list-item" + (pend ? " item-pending" : "");
-        item.innerHTML = `<div class="li-info"><span class="li-name">${i+1}. ${escapeHtml(nm)}</span>` +
-          (ts ? `<span class="li-time">${pend ? "" : "🕒 "}${escapeHtml(ts)}</span>` : "") + `</div>`;
-        if (!pend && isAdminMode) {   // ลบได้เฉพาะแอดมิน
-          const del = document.createElement("button");
-          del.className = "danger"; del.textContent = "ลบ";
-          del.addEventListener("click", () => removeName(nm));
-          item.appendChild(del);
-        }
-        nameList.appendChild(item);
-      });
+      h += `<div class="sec-title">ลงวันนี้ในชื่อ "${escapeHtml(session.name)}"</div>`;
+      if (blk) h += `<div class="note">วันห้ามหยุด ลงได้เฉพาะ <b>ลาป่วย</b></div>`;
+      else if (full && admin) h += `<div class="note info">เต็ม ${MAX_PER_DAY} คนแล้ว แต่แอดมินเพิ่มเกินได้</div>`;
+      else if (full) h += `<div class="note">วันนี้เต็ม ${MAX_PER_DAY} คนแล้ว ลงได้เฉพาะ <b>ลาป่วย</b></div>`;
+      if (past) h += `<div class="note warn">วันที่ผ่านมาแล้ว (แอดมินลงย้อนหลังได้)</div>`;
+      h += `<div class="types">` + Object.entries(TYPES).map(([t, v]) => {
+        const off = t !== "sick" && (blk || (full && !admin));
+        return `<button class="type-btn t-${t}${pick === t ? " sel" : ""}" data-t="${t}" ${off ? "disabled" : ""}><b>${v.label}</b><small>${v.hint}</small></button>`;
+      }).join("") + `</div>`;
+      if (pick === "half") h += `<div class="halfpick">${["เช้า","บ่าย"].map(x => `<button data-h="${x}" class="${halfPick === x ? "sel" : ""}">ครึ่ง${x}</button>`).join("")}</div>`;
+      h += `<button class="primary wide" id="confirmBtn" ${pick && !busy ? "" : "disabled"}>${busy ? "กำลังบันทึก..." :
+        pick ? `ยืนยัน: ${TYPES[pick].label}${pick === "half" ? ` (${halfPick})` : ""} · ${shortDay(k)}` : "เลือกประเภทก่อน"}</button>`;
     }
-    const isBlocked = blockedSet.has(selectedKey);
-    const full = names.length >= MAX_PER_DAY;
-    if (isBlocked) {
-      warn.className = "warn show";
-      warn.innerHTML = "🚫 วันนี้เป็น <b>วันห้ามหยุด</b> — ลงชื่อไม่ได้";
-    } else if (full && isAdminMode) {
-      warn.className = "warn show warn-info";
-      warn.innerHTML = `👑 ครบ ${MAX_PER_DAY} คนแล้ว — โหมดแอดมินเพิ่มเกินได้`;
-    } else if (full) {
-      warn.className = "warn show";
-      warn.innerHTML = `🚫 วันนี้เต็มแล้ว (${MAX_PER_DAY} คน) ลงเพิ่มไม่ได้`;
-    } else if (!isAdminMode && names.length > 0) {
-      warn.className = "warn show warn-info";
-      warn.innerHTML = "ℹ️ ต้องการลบชื่อ? แจ้งแอดมิน (ลบได้เฉพาะแอดมิน)";
-    } else {
-      warn.className = "warn";
-      warn.innerHTML = "";
-    }
-    // ห้ามหยุด = ลงไม่ได้ทุกคน / เต็ม = ลงไม่ได้ยกเว้นแอดมิน
-    nameInput.disabled = isBlocked || (full && !isAdminMode);
-    addBtn.disabled = isBlocked || (full && !isAdminMode);
-
-    // ปุ่มตั้ง/ยกเลิกวันห้ามหยุด (เฉพาะแอดมิน)
-    const blockBtn = document.getElementById("blockBtn");
-    if (isAdminMode) {
-      blockBtn.style.display = "block";
-      blockBtn.className = isBlocked ? "primary" : "danger";
-      blockBtn.textContent = isBlocked ? "✅ ยกเลิกวันห้ามหยุด" : "🚫 ตั้งเป็นวันห้ามหยุด";
-    } else {
-      blockBtn.style.display = "none";
-    }
+    if (admin) h += `<button class="${blk ? "primary" : "danger"} wide" id="blockBtn" style="margin-top:8px">${blk ? "✅ ยกเลิกวันห้ามหยุด" : "🚫 ตั้งเป็นวันห้ามหยุด"}</button>`;
+    h += `<div class="modal-foot"><button class="ghost" id="closeDayBtn">ปิด</button></div>`;
+    $("dayModal").innerHTML = h;
   }
 
-  // อัปเดตหน้าจอทันที (ใช้หลังแก้ pendingOps / serverData)
-  function refreshView() { recompute(); renderModal(); render(); }
-
-  async function addName() {
-    const name = nameInput.value.trim();
-    if (!name) return;
-    if (blockedSet.has(selectedKey)) { toast("🚫 วันนี้เป็นวันห้ามหยุด"); return; }
-    const names = data[selectedKey] || [];
-    if (names.length >= MAX_PER_DAY && !isAdminMode) { toast(`🚫 วันนี้เต็มแล้ว (${MAX_PER_DAY} คน)`); return; }
-    if (names.some(n => nameOf(n).toLowerCase() === name.toLowerCase())) { toast("มีชื่อนี้อยู่แล้ว"); nameInput.value=""; return; }
-
-    if (!isShared()) { // โหมดเครื่องเดียว
-      if (!serverData[selectedKey]) serverData[selectedKey] = [];
-      serverData[selectedKey].push({ name, ts: new Date().toISOString() }); saveCache();
-      refreshView(); nameInput.value=""; nameInput.focus(); return;
-    }
-
-    // ---- อัปเดตทันที: โชว์ชื่อเลย แล้วค่อยส่งไปบันทึกเบื้องหลัง ----
-    const op = { id: ++opSeq, type:"add", date: selectedKey, name, ts: new Date().toISOString() };
-    pendingOps.push(op);
-    refreshView(); nameInput.value=""; nameInput.focus();
-
-    const payload = { action:"add", date: op.date, name: op.name };
-    if (isAdminMode) { payload.key = adminKey; payload.force = true; } // แอดมินเพิ่มเกิน 3 ได้
+  // บันทึก/ลบ แล้วอัปเดตจอจากผลของเซิร์ฟเวอร์
+  async function write(fn, args, okMsg) {
+    busy = true; renderDay();
     try {
-      const r = await apiPost(payload);
-      if (r && r.data) { serverData = r.data; saveCache(); }
-      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
-      if (!r.ok && r.error === "full") toast(`🚫 วันนี้เต็มแล้ว มีคนลงครบ ${MAX_PER_DAY} คน`);
-      else if (!r.ok && r.error === "duplicate") toast("มีชื่อนี้อยู่แล้ว");
-      else if (!r.ok && r.error === "blocked") toast("🚫 วันนี้เป็นวันห้ามหยุด");
-      else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
-    } catch(e) {
-      // POST อาจสำเร็จแล้วแต่อ่านผลไม่ได้ (redirect) — ดึงข้อมูลมายืนยัน
-      const ok = await reconcile();
-      const saved = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
-      if (!saved) toast(ok ? "บันทึกไม่สำเร็จ ลองใหม่" : "📴 ต่อเน็ตไม่ได้ — ชื่อยังไม่ถูกบันทึก");
-    } finally {
-      dropOp(op.id); refreshView();
-    }
+      setData(await rpc(fn, { p_token: session.token, ...args }));
+      if (okMsg) toast(okMsg);
+      return true;
+    } catch (e) {
+      if (e.message === "auth") { logoutLocal("เครื่องนี้ถูกออกจากระบบ กรุณาเข้าระบบใหม่"); return false; }
+      if (e.biz) { toast(ERR[e.message] || "ทำไม่สำเร็จ ลองใหม่"); syncQuiet(); }
+      else toast("📴 ต่อเน็ตไม่ได้ ยังไม่ได้บันทึก ลองใหม่");
+      return false;
+    } finally { busy = false; refreshView(); }
   }
 
-  async function removeName(name) {
-    if (!isAdminMode) { toast("ลบได้เฉพาะแอดมิน — แจ้งแอดมินให้ลบ"); return; }
-    if (!isShared()) { // โหมดเครื่องเดียว
-      serverData[selectedKey] = (serverData[selectedKey]||[]).filter(n => nameOf(n) !== name);
-      if (serverData[selectedKey].length === 0) delete serverData[selectedKey];
-      saveCache(); refreshView(); return;
+  $("dayModal").addEventListener("click", async e => {
+    const t = e.target.closest("[data-t]"), hb = e.target.closest("[data-h]"), del = e.target.closest("[data-del]");
+    if (t && !t.disabled) { pick = t.dataset.t; renderDay(); return; }
+    if (hb) { halfPick = hb.dataset.h; renderDay(); return; }
+    if (del && isAdmin()) {
+      if (del.dataset.confirm !== "1") { del.dataset.confirm = "1"; del.textContent = "ยืนยันลบ"; return; }   // แตะ 2 ครั้งกันพลาด
+      await write("leave_remove", { p_id: Number(del.dataset.del) }, `ลบ ${del.dataset.name} แล้ว`);
+      return;
     }
-
-    // ---- อัปเดตทันที: เอาชื่อออกเลย แล้วค่อยยืนยันกับเซิร์ฟเวอร์ ----
-    const op = { id: ++opSeq, type:"remove", date: selectedKey, name };
-    pendingOps.push(op);
-    refreshView();
-
-    try {
-      const r = await apiPost({ action:"remove", date: op.date, name: op.name, key: adminKey });
-      if (r && r.data) { serverData = r.data; saveCache(); }
-      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
-      if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
-      else if (!r.ok) toast("ลบไม่สำเร็จ ลองใหม่");
-    } catch(e) {
-      const ok = await reconcile();
-      const stillThere = ok && (serverData[op.date]||[]).some(n => nameOf(n).toLowerCase() === op.name.toLowerCase());
-      if (stillThere || !ok) toast(ok ? "ลบไม่สำเร็จ ลองใหม่" : "📴 ต่อเน็ตไม่ได้ — ต้องมีเน็ตเพื่อแก้ไข");
-    } finally {
-      dropOp(op.id); refreshView();
+    if (e.target.id === "closeDayBtn") { closeDay(); return; }
+    if (e.target.id === "blockBtn" && isAdmin()) {
+      const on = !isBlocked(selectedKey);
+      await write("day_block", { p_date: selectedKey, p_block: on }, on ? "🚫 ตั้งเป็นวันห้ามหยุดแล้ว" : "✅ ยกเลิกวันห้ามหยุดแล้ว");
+      return;
     }
-  }
-
-  // ตั้ง/ยกเลิก วันห้ามหยุด (เฉพาะแอดมิน)
-  async function toggleBlock() {
-    if (!isAdminMode || !selectedKey) return;
-    const key = selectedKey;
-    const willBlock = !blockedSet.has(key);
-    if (willBlock) blockedSet.add(key); else blockedSet.delete(key);   // อัปเดตทันที
-    saveBlocked(); refreshView();
-    if (!isShared()) return;   // โหมดเครื่องเดียว
-    try {
-      const r = await apiPost({ action: willBlock ? "block" : "unblock", date: key, key: adminKey });
-      if (r && r.data) { serverData = r.data; saveCache(); }
-      if (r && r.blocked) { blockedSet = new Set(r.blocked); saveBlocked(); }
-      if (!r.ok && r.error === "forbidden") { toast("รหัสแอดมินไม่ถูกต้อง"); exitAdmin(); }
-      else if (!r.ok) toast("บันทึกไม่สำเร็จ ลองใหม่");
-      else toast(willBlock ? "🚫 ตั้งเป็นวันห้ามหยุดแล้ว" : "✅ ยกเลิกวันห้ามหยุดแล้ว");
-    } catch(e) {
-      await reconcile();   // ดึงสถานะจริงมายืนยัน
-      toast("📴 ต่อเน็ตไม่ได้ ลองใหม่");
-    } finally { refreshView(); }
-  }
-  document.getElementById("blockBtn").addEventListener("click", toggleBlock);
-
-  function closeModal() { overlay.classList.remove("show"); selectedKey = null; }
-
-  /* ---------- Settings ---------- */
-  const setOverlay = document.getElementById("setOverlay");
-  const apiInput = document.getElementById("apiInput");
-  const adminInput = document.getElementById("adminInput");
-  const adminField = document.getElementById("adminField");
-  const adminExitBtn = document.getElementById("adminExitBtn");
-  const adminHelp = document.getElementById("adminHelp");
-
-  document.getElementById("settings-btn").addEventListener("click", () => {
-    apiInput.value = apiUrl; adminInput.value = ""; updateAdminUI(); setOverlay.classList.add("show");
-  });
-  document.getElementById("setCloseBtn").addEventListener("click", () => setOverlay.classList.remove("show"));
-  document.getElementById("setSaveBtn").addEventListener("click", () => {
-    const v = apiInput.value.trim();
-    apiUrl = v;
-    if (v) localStorage.setItem(API_KEY, v); else localStorage.removeItem(API_KEY);
-    toast(v ? "เชื่อมต่อ Google Sheet แล้ว" : "เปลี่ยนเป็นโหมดเครื่องเดียว");
-    syncFromServer();
+    if (e.target.id === "confirmBtn" && pick && !busy) {
+      const k = selectedKey, label = TYPES[pick].label + (pick === "half" ? ` (${halfPick})` : "");
+      const ok = await write("leave_add", { p_date: k, p_type: pick, p_half: pick === "half" ? halfPick : null }, `✅ ลง${label} ${shortDay(k)} แล้ว`);
+      if (ok) closeDay();
+    }
   });
 
-  /* ---------- Admin (ปลดล็อก: ลบ / เพิ่มเกิน 4 / วันห้ามหยุด) ---------- */
-  function updateAdminUI() {
-    if (isAdminMode) {
-      adminField.style.display = "none";
-      adminExitBtn.style.display = "block";
-      adminHelp.innerHTML = "✅ กำลังอยู่ในโหมดแอดมิน — ลบชื่อได้ · เพิ่มเกิน 4 คน/วันได้ · ตั้งวันห้ามหยุดได้";
-    } else {
-      adminField.style.display = "flex";
-      adminExitBtn.style.display = "none";
-      adminHelp.innerHTML = "ใส่รหัสแอดมินเพื่อปลดล็อก <b>ลบชื่อ</b> · <b>เพิ่มเกิน 4 คน/วัน</b> · <b>ตั้งวันห้ามหยุด</b><br>พนักงานทั่วไปเพิ่มได้อย่างเดียว (ไม่เกิน 4) · ลบไม่ได้ ต้องแจ้งแอดมิน";
-    }
+  function refreshView() { render(); renderDay(); }
+
+  /* ---------- ของฉัน ---------- */
+  function openMine() {
+    const prefix = keyOf(viewYear, viewMonth, 1).slice(0, 8);
+    const mine = [];
+    for (const k in db.data) if (k.startsWith(prefix)) for (const e of db.data[k]) if (isMe(e)) mine.push({ k, e });
+    mine.sort((a, b) => a.k.localeCompare(b.k));
+    $("mineSub").textContent = `${session.name} · ${monthNames[viewMonth]} ${viewYear + 543}`;
+    $("mineTally").innerHTML = Object.entries(TYPES).map(([t, v]) =>
+      `<div class="t-${t}"><b>${mine.filter(x => typeOf(x.e) === t).length}</b><span>${v.label}</span></div>`).join("");
+    $("mineList").innerHTML = mine.length
+      ? mine.map(x => `<div class="list-item"><div class="li-info"><span>${dayText(x.k)}</span><span class="li-time">${fmtTime(x.e.ts)}</span></div><span class="pill t-${typeOf(x.e)}">${typeText(x.e)}</span></div>`).join("")
+        + (isAdmin() ? "" : `<div class="empty-note">ต้องการยกเลิกวันไหน แจ้งแอดมิน (${escapeHtml(adminNames())})</div>`)
+      : `<div class="empty-note">เดือนนี้ยังไม่ได้ลงวันไหน แตะวันที่ในปฏิทินเพื่อลง</div>`;
+    $("mineOverlay").classList.add("show");
   }
-  async function enterAdmin() {
-    const k = adminInput.value.trim();
-    if (!k) return;
-    if (!isShared()) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); return; }
-    const btn = document.getElementById("adminBtn");
-    btn.disabled = true; btn.textContent = "...";
-    try {
-      const r = await apiPost({ action:"auth", key:k });
-      if (r && r.ok && r.admin) { adminKey = k; isAdminMode = true; localStorage.setItem(ADMIN_LS, k); finishAdmin(true); }
-      else toast("รหัสแอดมินไม่ถูกต้อง");
-    } catch(e) { toast("📴 ต่อเน็ตไม่ได้ ลองใหม่"); }
-    finally { btn.disabled = false; btn.textContent = "เข้าโหมดแอดมิน"; }
-  }
-  function exitAdmin() { adminKey = ""; isAdminMode = false; localStorage.removeItem(ADMIN_LS); finishAdmin(false); }
-  function finishAdmin(on) {
-    adminInput.value = ""; updateAdminUI(); refreshStatus(); refreshView();
-    toast(on ? "👑 เข้าสู่โหมดแอดมินแล้ว" : "ออกจากโหมดแอดมินแล้ว");
-  }
-  document.getElementById("adminBtn").addEventListener("click", enterAdmin);
-  adminInput.addEventListener("keydown", e => { if (e.key === "Enter") enterAdmin(); });
-  adminExitBtn.addEventListener("click", exitAdmin);
+  $("mine-btn").addEventListener("click", openMine);
 
   /* ---------- สรุปวันหยุดของเดือน ---------- */
-  const sumOverlay = document.getElementById("sumOverlay");
   function openSummary() {
-    const prefix = keyOf(viewYear, viewMonth, 1).slice(0, 8); // "YYYY-MM-"
-    const tally = new Map();  // ชื่อ(แสดง) -> จำนวนวัน
-    for (const key in data) {
-      if (!key.startsWith(prefix)) continue;
-      for (const e of data[key]) {
-        const nm = nameOf(e);
-        tally.set(nm, (tally.get(nm) || 0) + 1);
+    const prefix = keyOf(viewYear, viewMonth, 1).slice(0, 8);
+    const tally = new Map();   // ชื่อ -> {off, leave, sick, half, total}
+    for (const k in db.data) {
+      if (!k.startsWith(prefix)) continue;
+      for (const e of db.data[k]) {
+        const key = e.name.toLowerCase();
+        if (!tally.has(key)) tally.set(key, { name: e.name, off: 0, leave: 0, sick: 0, half: 0, total: 0 });
+        const t = tally.get(key); t[typeOf(e)]++; t.total++;
       }
     }
-    const rows = [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "th"));
-    document.getElementById("sumTitle").textContent = `📊 สรุปวันหยุด · ${monthNames[viewMonth]} ${viewYear + 543}`;
-    document.getElementById("sumSub").textContent = rows.length
-      ? `มีคนลงหยุด ${rows.length} คน · รวม ${rows.reduce((s, r) => s + r[1], 0)} วัน-คน`
-      : "เดือนนี้ยังไม่มีใครลงหยุด";
-    const list = document.getElementById("sumList");
-    list.innerHTML = rows.length
-      ? rows.map((r, i) => `<div class="list-item"><span class="li-name">${i+1}. ${escapeHtml(r[0])}</span><span class="sum-count">${r[1]} วัน</span></div>`).join("")
+    const rows = [...tally.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "th"));
+    $("sumTitle").textContent = `📊 สรุปวันหยุด · ${monthNames[viewMonth]} ${viewYear + 543}`;
+    $("sumSub").textContent = rows.length ? `มีคนลง ${rows.length} คน · รวม ${rows.reduce((s, r) => s + r.total, 0)} รายการ` : "เดือนนี้ยังไม่มีใครลง";
+    $("sumList").innerHTML = rows.length
+      ? rows.map((r, i) => `<div class="list-item"><span class="li-info">${i+1}. ${escapeHtml(r.name)}</span><span class="sum-pills">` +
+          Object.keys(TYPES).filter(t => r[t]).map(t => `<span class="pill t-${t}">${TYPES[t].label} ${r[t]}</span>`).join("") +
+          `</span><span class="sum-total">รวม ${r.total}</span></div>`).join("")
       : `<div class="empty-note">— ไม่มีข้อมูล —</div>`;
-    sumOverlay.classList.add("show");
+    $("sumOverlay").classList.add("show");
   }
-  document.getElementById("summary-btn").addEventListener("click", openSummary);
-  document.getElementById("sumCloseBtn").addEventListener("click", () => sumOverlay.classList.remove("show"));
-  sumOverlay.addEventListener("click", e => { if (e.target === sumOverlay) sumOverlay.classList.remove("show"); });
+  $("summary-btn").addEventListener("click", openSummary);
 
-  /* ---------- ป็อปอัพแจ้งเตือน "วันนี้ใครหยุด" (เด้งตอนเปิดแอป วันละครั้ง) ---------- */
-  const NOTIFY_KEY = "shop_leave_notified";
-  const notifyOverlay = document.getElementById("notifyOverlay");
+  /* ---------- แอดมิน: รีเซ็ตรหัสพนักงาน ---------- */
+  $("admin-btn").addEventListener("click", () => {
+    $("adminSub").textContent = `แอดมิน: ${adminNames()} · ลบ/ยกเลิก · เพิ่มเกิน 4 · ตั้งวันห้ามหยุด (กดที่วันในปฏิทิน)`;
+    $("resetName").value = ""; $("resetBtn").textContent = "รีเซ็ต"; delete $("resetBtn").dataset.confirm;
+    $("adminOverlay").classList.add("show");
+  });
+  $("resetBtn").addEventListener("click", async () => {
+    const name = $("resetName").value.trim(), btn = $("resetBtn");
+    if (!name) { toast("พิมพ์ชื่อพนักงานก่อน"); return; }
+    if (btn.dataset.confirm !== name) { btn.dataset.confirm = name; btn.textContent = "ยืนยัน"; return; }
+    btn.disabled = true;
+    try {
+      const r = await rpc("staff_reset_pin", { p_token: session.token, p_name: name });
+      toast(`รีเซ็ตรหัสของ ${r.name} แล้ว ให้เขาเข้าระบบและตั้งรหัสใหม่`);
+      $("resetName").value = "";
+    } catch (e) {
+      if (e.message === "auth") { logoutLocal("เครื่องนี้ถูกออกจากระบบ กรุณาเข้าระบบใหม่"); return; }
+      toast(e.biz ? (ERR[e.message] || "ทำไม่สำเร็จ") : "📴 ต่อเน็ตไม่ได้ ลองใหม่");
+    } finally { btn.disabled = false; btn.textContent = "รีเซ็ต"; delete btn.dataset.confirm; }
+  });
+  $("resetName").addEventListener("input", () => { $("resetBtn").textContent = "รีเซ็ต"; delete $("resetBtn").dataset.confirm; });
+
+  /* ---------- ป็อปอัพ "วันนี้ใครหยุด" (วันละครั้ง) ---------- */
   function maybeNotifyToday() {
-    const tKey = keyOf(today.getFullYear(), today.getMonth(), today.getDate());
-    if (blockedSet.has(tKey)) return;
-    const names = (data[tKey] || []).map(nameOf);
-    if (names.length === 0) return;
-    if (localStorage.getItem(NOTIFY_KEY) === tKey) return;   // แจ้งไปแล้ววันนี้
-    localStorage.setItem(NOTIFY_KEY, tKey);
-    document.getElementById("notifyDate").textContent =
-      `วันนี้ ${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear() + 543} · มีคนหยุด ${names.length} คน`;
-    document.getElementById("notifyList").innerHTML =
-      names.map((n, i) => `<div class="list-item"><span class="li-name">${i+1}. ${escapeHtml(n)}</span></div>`).join("");
-    notifyOverlay.classList.add("show");
+    if (!session || isBlocked(todayKey)) return;
+    const es = entries(todayKey);
+    if (!es.length || store.get(NOTIFY_KEY) === todayKey) return;
+    store.set(NOTIFY_KEY, todayKey);
+    $("notifyDate").textContent = `วันนี้ ${dayText(todayKey)} · มีคนหยุด ${es.length} คน`;
+    $("notifyList").innerHTML = es.map((e, i) => `<div class="list-item"><span class="li-info">${i+1}. ${escapeHtml(e.name)}</span><span class="pill t-${typeOf(e)}">${typeText(e)}</span></div>`).join("");
+    $("notifyOverlay").classList.add("show");
   }
-  document.getElementById("notifyCloseBtn").addEventListener("click", () => notifyOverlay.classList.remove("show"));
-  notifyOverlay.addEventListener("click", e => { if (e.target === notifyOverlay) notifyOverlay.classList.remove("show"); });
 
   /* ---------- Toast ---------- */
   let toastTimer;
   function toast(msg) {
-    const t = document.getElementById("toast");
+    const t = $("toast");
     t.textContent = msg; t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+
+  /* ================== เข้าระบบ: พิมพ์ชื่อ → ยืนยันชื่อ → ตั้ง/ใส่รหัส ================== */
+  let L = { step: "name", name: "", status: null, pin: "", pin1: "", err: "" };
+  const keypadHtml = () => `<div class="keypad">${["1","2","3","4","5","6","7","8","9","","0","⌫"].map(k =>
+    k ? `<button data-key="${k}" aria-label="${k === "⌫" ? "ลบ" : k}">${k}</button>` : `<span></span>`).join("")}</div>`;
+  const dotsHtml = () => `<div class="dots">${[0,1,2,3].map(i => `<span class="${i < L.pin.length ? "on" : ""}"></span>`).join("")}</div>`;
+
+  function renderLogin() {
+    const c = $("loginCard");
+    if (L.step === "name") {
+      c.innerHTML = `<h1>พิมพ์ชื่อของคุณ</h1>
+        <p>ใช้ชื่อเล่นที่ใช้ในร้าน เช่น อ้น, Book<br>ตั้งครั้งเดียว เครื่องนี้จะจำว่าเป็นคุณตลอด</p>
+        <form id="nameForm" style="display:flex; flex-direction:column; gap:12px">
+          <input class="text-input" id="nameIn" type="text" maxlength="20" placeholder="พิมพ์ชื่อตรงนี้" autocomplete="off" autocapitalize="off" enterkeyhint="next" value="${escapeHtml(L.name)}">
+          ${L.err ? `<div class="note" style="margin:0">${escapeHtml(L.err)}</div>` : ""}
+          <button class="primary wide" type="submit" id="nameNext">ถัดไป</button>
+        </form>`;
+      setTimeout(() => { const i = $("nameIn"); if (i) i.focus(); }, 60);
+    } else if (L.step === "confirm") {
+      const s = L.status;
+      c.innerHTML = `<p>ชื่อของคุณคือ</p><div class="big-name">${escapeHtml(s.name)}</div>` +
+        (s.known ? `<div class="note ok" style="margin:0">ตรงกับรายชื่อในร้าน${s.has_pin ? " · ตั้งรหัสไว้แล้ว" : ""}</div>`
+                 : `<div class="note warn" style="margin:0">ไม่พบชื่อนี้ในรายชื่อเดิม ตรวจตัวสะกดอีกครั้ง ถ้าเป็นพนักงานใหม่กด "ใช่ ถูกต้อง" ได้เลย</div>`) +
+        `<div class="row2"><button class="ghost" id="editName">แก้ชื่อ</button><button class="primary" id="okName">ใช่ ถูกต้อง</button></div>`;
+    } else if (L.step === "pin" || L.step === "pin2") {
+      const s = L.status;
+      const title = s.has_pin ? "ใส่รหัส 4 หลักของคุณ" : L.step === "pin" ? "ตั้งรหัส 4 หลัก" : "ใส่รหัสอีกครั้งเพื่อยืนยัน";
+      const sub = s.has_pin ? "รหัสที่ตั้งไว้ตอนเข้าระบบครั้งแรก · ลืมรหัสแจ้งแอดมินให้รีเซ็ต"
+                : L.step === "pin" ? `จำไว้ให้ดี ใช้ตอนเปลี่ยนมือถือ<br>หลังจากนี้เครื่องนี้จะเป็นของ <b>${escapeHtml(s.name)}</b> ตลอด` : "พิมพ์รหัสเดิมซ้ำอีกครั้ง";
+      c.innerHTML = `<div class="avatar">${escapeHtml(initial(s.name))}</div><h1>${title}</h1><p>${sub}</p>` +
+        (L.err ? `<div class="note" style="margin:0">${escapeHtml(L.err)}</div>` : "") +
+        dotsHtml() + keypadHtml() + `<button class="link" id="backName">‹ แก้ชื่อ</button>`;
+    } else if (L.step === "adminkey") {
+      c.innerHTML = `<div class="avatar">👑</div><h1>ยืนยันแอดมิน</h1>
+        <p><b>${escapeHtml(L.status.name)}</b> เป็นแอดมิน · ครั้งแรกต้องใส่รหัสแอดมินเดิมของร้าน 1 ครั้ง</p>
+        <form id="keyForm" style="display:flex; flex-direction:column; gap:12px">
+          <input class="text-input" id="keyIn" type="password" placeholder="รหัสแอดมินเดิม" autocomplete="off">
+          ${L.err ? `<div class="note" style="margin:0">${escapeHtml(L.err)}</div>` : ""}
+          <button class="primary wide" type="submit">ยืนยัน</button>
+        </form><button class="link" id="backName">‹ แก้ชื่อ</button>`;
+      setTimeout(() => { const i = $("keyIn"); if (i) i.focus(); }, 60);
+    } else if (L.step === "busy") {
+      c.innerHTML = `<h1>กำลังเข้าระบบ...</h1><p>รอสักครู่</p>`;
+    }
+  }
+
+  function cleanName(s) { return s.replace(/\s+/g, " ").trim(); }
+  $("loginCard").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (e.target.id === "nameForm") {
+      const raw = cleanName($("nameIn").value);
+      L.name = raw; L.err = "";
+      if (!raw) L.err = "กรุณาพิมพ์ชื่อของคุณ";
+      else if (/^[\d\s]+$/.test(raw)) L.err = "ชื่อต้องเป็นตัวอักษร ไม่ใช่ตัวเลขอย่างเดียว";
+      else if (/[()]/.test(raw)) L.err = "พิมพ์แค่ชื่อ ไม่ต้องใส่วงเล็บ (ประเภทลาเลือกตอนลงวัน)";
+      if (L.err) { renderLogin(); return; }
+      $("nameNext").disabled = true; $("nameNext").textContent = "กำลังตรวจชื่อ...";
+      try { L.status = await rpc("staff_status", { p_name: raw }); L.step = "confirm"; }
+      catch { L.err = "ต่อเน็ตไม่ได้ ลองใหม่อีกครั้ง"; }
+      renderLogin();
+    } else if (e.target.id === "keyForm") {
+      const k = $("keyIn").value;
+      if (!k) return;
+      await doLogin(k);
+    }
+  });
+  $("loginCard").addEventListener("click", async e => {
+    if (e.target.id === "editName" || e.target.id === "backName") { L = { ...L, step: "name", pin: "", pin1: "", err: "" }; renderLogin(); return; }
+    if (e.target.id === "okName") { L.step = "pin"; L.pin = ""; L.pin1 = ""; L.err = ""; renderLogin(); return; }
+    const kb = e.target.closest("[data-key]");
+    if (!kb) return;
+    if (kb.dataset.key === "⌫") L.pin = L.pin.slice(0, -1);
+    else if (L.pin.length < 4) L.pin += kb.dataset.key;
+    L.err = "";
+    renderLogin();
+    if (L.pin.length < 4) return;
+    await new Promise(r => setTimeout(r, 150));
+    if (L.status.has_pin) { await doLogin(null); return; }
+    if (L.step === "pin") { L.pin1 = L.pin; L.pin = ""; L.step = "pin2"; renderLogin(); return; }
+    if (L.pin !== L.pin1) { L.step = "pin"; L.pin = ""; L.pin1 = ""; L.err = "รหัส 2 ครั้งไม่ตรงกัน ตั้งใหม่อีกครั้ง"; renderLogin(); return; }
+    if (L.status.need_admin_key) { L.step = "adminkey"; L.err = ""; renderLogin(); return; }
+    await doLogin(null);
+  });
+
+  async function doLogin(adminKey) {
+    const pin = L.status.has_pin ? L.pin : L.pin1;
+    const prevStep = L.step;
+    L.step = "busy"; renderLogin();
+    let r;
+    try { r = await rpc("staff_login", { p_name: L.status.name, p_pin: pin, p_admin_key: adminKey }); }
+    catch { L.step = prevStep; L.pin = ""; L.err = "ต่อเน็ตไม่ได้ ลองใหม่อีกครั้ง"; renderLogin(); return; }
+    if (r && r.ok) {
+      session = { token: r.token, name: r.name, is_admin: r.is_admin };
+      store.set(SESSION_KEY, session);
+      L = { step: "name", name: "", status: null, pin: "", pin1: "", err: "" };
+      showApp();
+      toast(`เครื่องนี้จำว่าคุณคือ "${session.name}" แล้ว`);
+      return;
+    }
+    const err = r && r.error;
+    L.pin = "";
+    if (err === "bad_pin") { L.step = "pin"; L.err = `รหัสไม่ถูกต้อง (ลองได้อีก ${r.left} ครั้ง)`; }
+    else if (err === "locked") { L.step = "pin"; L.err = `ใส่รหัสผิดหลายครั้ง ลองใหม่ในอีก ${r.minutes} นาที หรือแจ้งแอดมิน`; }
+    else if (err === "need_admin_key") { L.step = "adminkey"; L.err = adminKey ? "รหัสแอดมินไม่ถูกต้อง" : ""; }
+    else if (err === "bad_name") { L.step = "name"; L.err = "ชื่อนี้ใช้ไม่ได้ ลองพิมพ์ใหม่"; }
+    else { L.step = "pin"; L.pin1 = ""; L.err = "เข้าระบบไม่สำเร็จ ลองใหม่"; }
+    renderLogin();
+  }
+
+  function logoutLocal(msg) {
+    session = null; store.del(SESSION_KEY);
+    document.querySelectorAll(".overlay.show").forEach(o => o.classList.remove("show"));
+    showLogin();
+    if (msg) toast(msg);
+  }
+
+  /* ---------- สลับหน้า ---------- */
+  function showLogin() { $("appView").hidden = true; $("loginView").hidden = false; renderLogin(); }
+  function showApp() {
+    $("loginView").hidden = true; $("appView").hidden = false;
+    $("meAvatar").textContent = initial(session.name);
+    $("meName").textContent = `สวัสดี ${session.name}`;
+    $("meSub").textContent = isAdmin() ? "แอดมิน · ลบ/ยกเลิก · เพิ่มเกิน 4 · ตั้งวันห้ามหยุด" : "เครื่องนี้จำไว้แล้ว · แตะวันที่เพื่อลง";
+    $("adminBadge").hidden = !isAdmin();
+    $("admin-btn").hidden = !isAdmin();
+    render();
+    syncFromServer();
+  }
+  // เช็คว่าเครื่องนี้ยังเป็นของคนเดิม (แอดมินอาจรีเซ็ตรหัส) — ออกจากระบบเฉพาะเมื่อเซิร์ฟเวอร์ตอบชัดว่าไม่ใช่
+  async function checkSession() {
+    if (!session) return;
+    try {
+      const r = await rpc("staff_whoami", { p_token: session.token });
+      if (!r) { logoutLocal("รหัสของคุณถูกรีเซ็ต กรุณาเข้าระบบใหม่"); return; }
+      if (r.is_admin !== session.is_admin || r.name !== session.name) {
+        session = { ...session, name: r.name, is_admin: r.is_admin }; store.set(SESSION_KEY, session); showApp();
+      }
+    } catch {}
+  }
+
+  /* ---------- Realtime: เครื่องอื่นลงแล้วเห็นทันที ---------- */
+  let rtTimer;
+  function syncQuiet() {
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(async () => {
+      try { setData(await rpc("get_all")); refreshView(); } catch {}
+    }, 400);
+  }
+  function startRealtime() {
+    if (!window.supabase) return;
+    try {
+      sb().channel("leave-changes")
+        .on("postgres_changes", { event: "*", schema: "public", table: "leaves" }, syncQuiet)
+        .on("postgres_changes", { event: "*", schema: "public", table: "blocked" }, syncQuiet)
+        .subscribe();
+    } catch {}
   }
 
   /* ---------- Events ---------- */
-  addBtn.addEventListener("click", addName);
-  nameInput.addEventListener("keydown", e => { if (e.key === "Enter") addName(); });
-  document.getElementById("closeBtn").addEventListener("click", closeModal);
-  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
-  setOverlay.addEventListener("click", e => { if (e.target === setOverlay) setOverlay.classList.remove("show"); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeModal(); setOverlay.classList.remove("show"); sumOverlay.classList.remove("show"); } });
-  document.getElementById("prev").addEventListener("click", () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
-  document.getElementById("next").addEventListener("click", () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
-  document.getElementById("today-btn").addEventListener("click", () => { viewYear=today.getFullYear(); viewMonth=today.getMonth(); render(); });
-  window.addEventListener("online", syncFromServer);
-  window.addEventListener("offline", () => setStatus("offline","ออฟไลน์ · แสดงข้อมูลล่าสุด (แก้ไขต้องต่อเน็ต)", true));
-
-  /* ---------- เริ่มทำงาน ---------- */
-  if (useSb) document.getElementById("apiSection").style.display = "none";   // ใช้ Supabase แล้ว ไม่ต้องตั้งลิงก์ Google
-  recompute();
-  render();
-  syncFromServer();
-  startRealtime();
-
-  // กลับมาเปิดแอป (สลับจากแอปอื่น / ปลดล็อกจอ) → ดึงข้อมูลล่าสุด เผื่อ realtime หลุดระหว่างพักหน้าจอ
-  if (useSb) document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    if (lastStatus[0] === "offline") syncFromServer(); else onRemoteChange();
+  document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $(b.dataset.close).classList.remove("show")));
+  document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e => {
+    if (e.target !== o) return;
+    if (o.id === "overlay") closeDay(); else o.classList.remove("show");
+  }));
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    closeDay(); document.querySelectorAll(".overlay.show").forEach(o => o.classList.remove("show"));
+  });
+  $("prev").addEventListener("click", () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); });
+  $("next").addEventListener("click", () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
+  $("today-btn").addEventListener("click", () => { viewYear = today.getFullYear(); viewMonth = today.getMonth(); render(); });
+  window.addEventListener("online", () => { if (session) syncFromServer(); });
+  window.addEventListener("offline", () => { if (session) setStatus("offline", "ออฟไลน์ · แสดงข้อมูลล่าสุด (ลงวันต้องต่อเน็ต)", true); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !session) return;
+    if (lastMode === "offline") syncFromServer(); else syncQuiet();
+    checkSession();
   });
 
-  // ยืนยันรหัสแอดมินที่เก็บไว้กับเซิร์ฟเวอร์ (เผื่อรหัสถูกเปลี่ยน) — ไม่ผ่านให้ออกจากโหมด
-  if (isAdminMode && isShared()) {
-    apiPost({ action:"auth", key: adminKey })
-      .then(r => { if (!(r && r.ok && r.admin)) exitAdmin(); })
-      .catch(() => {});
-  }
+  /* ---------- เริ่มทำงาน ---------- */
+  if (session && session.token) { showApp(); checkSession(); } else { session = null; showLogin(); }
+  startRealtime();
 
   if ("serviceWorker" in navigator) {
     const hadController = !!navigator.serviceWorker.controller;

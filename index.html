@@ -213,6 +213,14 @@
   .halfpick button { flex: 1; background: var(--t-half-soft); color: var(--t-half); border: 2px solid transparent; }
   .halfpick button.sel { border-color: var(--t-half); }
   .wide { width: 100%; padding: 13px; font-size: 1rem; }
+  .admin-add { border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .admin-add .types { margin-bottom: 0; grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .admin-add .type-btn { text-align: center; padding: 10px 4px; }
+  .admin-add .halfpick { margin-bottom: 0; }
+  .admin-add .note { margin-bottom: 0; }
+  .name-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-y: auto; }
+  .chip-btn { padding: 5px 10px; font-size: .82rem; border-radius: 16px; background: #f1f4fb; color: var(--text); border: 2px solid transparent; }
+  .chip-btn.sel { border-color: var(--primary); color: var(--primary); }
   .modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
   .tally { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
   .tally div { border-radius: 12px; padding: 10px 4px; text-align: center; }
@@ -417,6 +425,8 @@
     forbidden: "ทำได้เฉพาะแอดมิน",
     invalid: "ข้อมูลไม่ถูกต้อง ลองใหม่",
     not_found: "ไม่พบชื่อนี้ หรือคนนี้ยังไม่ได้ตั้งรหัส",
+    duplicate_other: "คนนี้ลงวันนี้ไว้แล้ว",
+    bad_name: "ชื่อไม่ถูกต้อง (ห้ามมีวงเล็บ / ห้ามเป็นตัวเลขล้วน / ไม่เกิน 20 ตัว)",
   };
 
   /* ---------- เก็บในเครื่อง (กันเบราว์เซอร์ที่ปิด storage) ---------- */
@@ -531,7 +541,14 @@
 
   /* ---------- หน้าต่างวันที่ ---------- */
   let pick = null, halfPick = "เช้า", busy = false;
-  function openDay(k) { selectedKey = k; pick = null; halfPick = "เช้า"; renderDay(); $("overlay").classList.add("show"); }
+  let aName = "", aPick = null, aHalf = "เช้า";   // แอดมินเพิ่มคนอื่น
+  function openDay(k) { selectedKey = k; pick = null; halfPick = "เช้า"; aName = ""; aPick = null; aHalf = "เช้า"; renderDay(); $("overlay").classList.add("show"); }
+  // รายชื่อที่เคยลงไว้ (ไว้ให้แอดมินเลือกง่ายๆ)
+  function knownNames() {
+    const m = new Map();
+    Object.values(db.data).forEach(list => list.forEach(e => { const n = String(e.name || "").trim(); if (n && !m.has(n.toLowerCase())) m.set(n.toLowerCase(), n); }));
+    return [...m.values()].sort((a, b) => a.localeCompare(b, "th"));
+  }
   function closeDay() { $("overlay").classList.remove("show"); selectedKey = null; }
 
   function renderDay() {
@@ -565,9 +582,25 @@
       h += `<button class="primary wide" id="confirmBtn" ${pick && !busy ? "" : "disabled"}>${busy ? "กำลังบันทึก..." :
         pick ? `ยืนยัน: ${TYPES[pick].label}${pick === "half" ? ` (${halfPick})` : ""} · ${shortDay(k)}` : "เลือกประเภทก่อน"}</button>`;
     }
+    if (admin) {
+      const taken = new Set(es.map(e => e.name.toLowerCase()));
+      const names = knownNames().filter(n => !taken.has(n.toLowerCase()));
+      const dup = aName.trim() && taken.has(aName.trim().toLowerCase());
+      h += `<div class="admin-add"><div class="sec-title">👑 เพิ่มคนอื่น (แอดมิน) · ${blk || full ? "เพิ่มเกิน/วันห้ามหยุดได้" : "ไม่จำกัดจำนวน"}</div>`;
+      h += `<input class="text-input" id="aNameIn" list="aNameList" maxlength="20" placeholder="พิมพ์หรือเลือกชื่อพนักงาน" autocomplete="off" value="${escapeHtml(aName)}">`;
+      h += `<datalist id="aNameList">${names.map(n => `<option value="${escapeHtml(n)}">`).join("")}</datalist>`;
+      if (names.length) h += `<div class="name-chips">${names.slice(0, 30).map(n => `<button class="chip-btn${aName === n ? " sel" : ""}" data-an="${escapeHtml(n)}">${escapeHtml(n)}</button>`).join("")}</div>`;
+      h += `<div class="note" id="aDupNote" ${dup ? "" : "hidden"}>คนนี้ลงวันนี้ไว้แล้ว</div>`;
+      h += `<div class="types">` + Object.entries(TYPES).map(([t, v]) =>
+        `<button class="type-btn t-${t}${aPick === t ? " sel" : ""}" data-at="${t}"><b>${v.label}</b></button>`).join("") + `</div>`;
+      if (aPick === "half") h += `<div class="halfpick">${["เช้า","บ่าย"].map(x => `<button data-ah="${x}" class="${aHalf === x ? "sel" : ""}">ครึ่ง${x}</button>`).join("")}</div>`;
+      h += `<button class="primary wide" id="aConfirmBtn"></button></div>`;
+    }
     if (admin) h += `<button class="${blk ? "primary" : "danger"} wide" id="blockBtn" style="margin-top:8px">${blk ? "✅ ยกเลิกวันห้ามหยุด" : "🚫 ตั้งเป็นวันห้ามหยุด"}</button>`;
     h += `<div class="modal-foot"><button class="ghost" id="closeDayBtn">ปิด</button></div>`;
+    const typing = document.activeElement && document.activeElement.id === "aNameIn";
     $("dayModal").innerHTML = h;
+    if (admin) { updateAdminAdd(); if (typing) { const i = $("aNameIn"); i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch {} } }
   }
 
   // บันทึก/ลบ แล้วอัปเดตจอจากผลของเซิร์ฟเวอร์
@@ -589,6 +622,16 @@
     const t = e.target.closest("[data-t]"), hb = e.target.closest("[data-h]"), del = e.target.closest("[data-del]");
     if (t && !t.disabled) { pick = t.dataset.t; renderDay(); return; }
     if (hb) { halfPick = hb.dataset.h; renderDay(); return; }
+    const an = e.target.closest("[data-an]"), at = e.target.closest("[data-at]"), ah = e.target.closest("[data-ah]");
+    if (an) { aName = an.dataset.an; renderDay(); return; }
+    if (at) { aPick = at.dataset.at; renderDay(); return; }
+    if (ah) { aHalf = ah.dataset.ah; renderDay(); return; }
+    if (e.target.id === "aConfirmBtn" && isAdmin() && aName.trim() && aPick && !busy) {
+      const k = selectedKey, n = aName.trim(), label = TYPES[aPick].label + (aPick === "half" ? ` (${aHalf})` : "");
+      const ok = await write("leave_add_for", { p_name: n, p_date: k, p_type: aPick, p_half: aPick === "half" ? aHalf : null }, `✅ เพิ่ม ${n} ${label} ${shortDay(k)} แล้ว`);
+      if (ok) { aName = ""; aPick = null; aHalf = "เช้า"; renderDay(); }
+      return;
+    }
     if (del && isAdmin()) {
       if (del.dataset.confirm !== "1") { del.dataset.confirm = "1"; del.textContent = "ยืนยันลบ"; return; }   // แตะ 2 ครั้งกันพลาด
       await write("leave_remove", { p_id: Number(del.dataset.del) }, `ลบ ${del.dataset.name} แล้ว`);
@@ -606,6 +649,19 @@
       if (ok) closeDay();
     }
   });
+
+  // อัปเดตแค่ปุ่ม/คำเตือน ไม่วาดใหม่ทั้งหน้าต่าง (พิมพ์ได้ลื่น ไม่หลุดคีย์บอร์ด)
+  function updateAdminAdd() {
+    const btn = $("aConfirmBtn"); if (!btn || !selectedKey) return;
+    const n = aName.trim(), dup = !!n && entries(selectedKey).some(e => e.name.toLowerCase() === n.toLowerCase());
+    $("aDupNote").hidden = !dup;
+    const ready = n && aPick && !dup && !busy;
+    btn.disabled = !ready;
+    btn.textContent = busy ? "กำลังบันทึก..." : ready
+      ? `เพิ่ม "${n}" : ${TYPES[aPick].label}${aPick === "half" ? ` (${aHalf})` : ""} · ${shortDay(selectedKey)}` : "ใส่ชื่อ + เลือกประเภท";
+    document.querySelectorAll("[data-an]").forEach(b => b.classList.toggle("sel", b.dataset.an === aName));
+  }
+  $("dayModal").addEventListener("input", e => { if (e.target.id === "aNameIn") { aName = e.target.value; updateAdminAdd(); } });
 
   function refreshView() { render(); renderDay(); }
 
@@ -652,7 +708,7 @@
 
   /* ---------- แอดมิน: รีเซ็ตรหัสพนักงาน ---------- */
   $("admin-btn").addEventListener("click", () => {
-    $("adminSub").textContent = `แอดมิน: ${adminNames()} · ลบ/ยกเลิก · เพิ่มเกิน 4 · ตั้งวันห้ามหยุด (กดที่วันในปฏิทิน)`;
+    $("adminSub").textContent = `แอดมิน: ${adminNames()} · ลบ/ยกเลิก · เพิ่มคนอื่นแม้วันเต็ม · ตั้งวันห้ามหยุด (กดที่วันในปฏิทิน)`;
     $("resetName").value = ""; $("resetBtn").textContent = "รีเซ็ต"; delete $("resetBtn").dataset.confirm;
     $("adminOverlay").classList.add("show");
   });
